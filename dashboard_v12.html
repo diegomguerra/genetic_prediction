@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSII — Dashboard Motor de Predicao Genetica</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f1117; color: #e0e0e0; }
+.sidebar { position: fixed; left: 0; top: 0; width: 250px; height: 100vh; background: #161822; border-right: 1px solid #2a2d3a; padding: 20px 0; overflow-y: auto; z-index: 10; }
+.sidebar h2 { color: #4dabf7; padding: 0 20px 16px; font-size: 15px; border-bottom: 1px solid #2a2d3a; margin-bottom: 8px; }
+.sidebar a { display: block; padding: 10px 20px; color: #adb5bd; text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; cursor:pointer; }
+.sidebar a:hover, .sidebar a.active { background: #1e2130; color: #4dabf7; border-left-color: #4dabf7; }
+.sidebar .section-label { padding: 14px 20px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: #596175; font-weight: 700; }
+.main { margin-left: 250px; padding: 24px 32px; }
+.page { display: none; } .page.active { display: block; }
+h1 { font-size: 22px; color: #fff; margin-bottom: 6px; }
+.subtitle { font-size: 13px; color: #596175; margin-bottom: 24px; }
+.kpi-row { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.kpi { background: #161822; border: 1px solid #2a2d3a; border-radius: 10px; padding: 18px 22px; flex: 1; min-width: 160px; }
+.kpi .label { font-size: 11px; color: #596175; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+.kpi .value { font-size: 28px; font-weight: 700; color: #4dabf7; }
+.kpi .value.green { color: #51cf66; } .kpi .value.orange { color: #ffa94d; } .kpi .value.red { color: #ff6b6b; } .kpi .value.purple { color: #be4bdb; }
+.kpi .sub { font-size: 11px; color: #596175; margin-top: 4px; }
+table { width: 100%; border-collapse: collapse; background: #161822; border-radius: 10px; overflow: hidden; margin-bottom: 24px; border: 1px solid #2a2d3a; }
+th { background: #1e2130; padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #596175; font-weight: 600; border-bottom: 1px solid #2a2d3a; position: sticky; top: 0; }
+td { padding: 9px 12px; font-size: 13px; border-bottom: 1px solid #1e2130; }
+tr:hover td { background: #1a1d2a; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-blue { background: rgba(77,171,247,0.15); color: #4dabf7; }
+.badge-green { background: rgba(81,207,102,0.15); color: #51cf66; }
+.badge-orange { background: rgba(255,169,77,0.15); color: #ffa94d; }
+.badge-red { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+.badge-purple { background: rgba(190,75,219,0.15); color: #be4bdb; }
+.card { background: #161822; border: 1px solid #2a2d3a; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }
+.card h3 { font-size: 15px; color: #fff; margin-bottom: 12px; }
+.formula { background: #1e2130; border: 1px solid #2a2d3a; border-radius: 6px; padding: 14px 18px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 13px; color: #ffa94d; margin: 10px 0; line-height: 1.6; overflow-x: auto; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; margin: 2px; }
+.tag-prod { background: rgba(81,207,102,0.12); color: #51cf66; }
+.tag-health { background: rgba(255,107,107,0.12); color: #ff6b6b; }
+.tag-repro { background: rgba(255,169,77,0.12); color: #ffa94d; }
+.tag-type { background: rgba(77,171,247,0.12); color: #4dabf7; }
+.tag-idx { background: rgba(190,75,219,0.12); color: #be4bdb; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-dot.ok { background: #51cf66; } .status-dot.warn { background: #ffa94d; } .status-dot.err { background: #ff6b6b; }
+.winner { background: rgba(81,207,102,0.15); font-weight: 700; color: #51cf66; }
+.bar { display: inline-block; height: 14px; border-radius: 3px; min-width: 2px; vertical-align: middle; }
+.bar-blue { background: #4dabf7; } .bar-green { background: #51cf66; } .bar-orange { background: #ffa94d; } .bar-red { background: #ff6b6b; }
+.tab-row { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #2a2d3a; }
+.tab-btn { padding: 10px 20px; background: none; border: none; color: #596175; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.tab-btn.active { color: #4dabf7; border-bottom-color: #4dabf7; font-weight: 600; }
+.note { font-size: 12px; color: #596175; margin-top: 8px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>DSII Engine</h2>
+    <div class="section-label">Visao Geral</div>
+    <a class="active" onclick="showPage('overview')">Dashboard</a>
+    <a onclick="showPage('databases')">Bancos de Dados</a>
+    <a onclick="showPage('architecture')">Arquitetura V10/V11/V12</a>
+    <div class="section-label">Modelos ML</div>
+    <a onclick="showPage('v11models')">V11 — Modelos por Trait</a>
+    <a onclick="showPage('v10models')">V10 — Modelos por Trait</a>
+    <a onclick="showPage('v12models')">V12 — Modelos por Trait</a>
+    <a onclick="showPage('comparison')">Comparativo V10/V11/V12</a>
+    <div class="section-label">Validacao</div>
+    <a onclick="showPage('ethan')">Ethan (4.156 animais)</a>
+    <a onclick="showPage('granularity')">Granularidade por Trait</a>
+    <a onclick="showPage('topgroup')">Top Group & Recall@K</a>
+    <a onclick="showPage('smalln')">Efeito de N Pequeno</a>
+    <div class="section-label">Detalhes Tecnicos</div>
+    <a onclick="showPage('features')">Features & Correlacoes</a>
+    <a onclick="showPage('profiles')">Perfis de Transmissao</a>
+    <a onclick="showPage('calibration')">Calibracao V12</a>
+    <a onclick="showPage('formulas')">Formulas & Indices</a>
+    <div class="section-label">Producao</div>
+    <a onclick="showPage('production')">Script de Producao</a>
+</div>
+
+<div class="main">
+
+<!-- ==================== OVERVIEW ==================== -->
+<div id="page-overview" class="page active">
+    <h1>DSII — Motor de Predicao Genetica</h1>
+    <div class="subtitle">Versao de Producao: V11 (PA + Deviation + 5-Model Ensemble + Hybrid 3-Way) &mdash; Validado em 4.156 animais USA</div>
+
+    <div class="kpi-row">
+        <div class="kpi"><div class="label">Versao Producao</div><div class="value green">V11</div><div class="sub">54/56 vitorias vs V10/V12</div></div>
+        <div class="kpi"><div class="label">Traits ML</div><div class="value">47</div><div class="sub">+ 3 formula (FI, NM$, CM$)</div></div>
+        <div class="kpi"><div class="label">Spearman Medio</div><div class="value green">0.774</div><div class="sub">Ethan validation (14 traits)</div></div>
+        <div class="kpi"><div class="label">Recall@10% Medio</div><div class="value orange">67%</div><div class="sub">Captura do top 5% real</div></div>
+        <div class="kpi"><div class="label">Recall@15% Medio</div><div class="value green">78%</div><div class="sub">Captura do top 5% real</div></div>
+    </div>
+
+    <div class="kpi-row">
+        <div class="kpi"><div class="label">Base de Touros</div><div class="value">258.203</div><div class="sub">bulls.csv (Select Sires)</div></div>
+        <div class="kpi"><div class="label">Base CDCB</div><div class="value">92.512</div><div class="sub">Bull_Report (CDCB)</div></div>
+        <div class="kpi"><div class="label">Dados Treino</div><div class="value purple">7.608</div><div class="sub">filhas (3 fontes)</div></div>
+        <div class="kpi"><div class="label">Validacao Externa</div><div class="value green">4.156</div><div class="sub">Ethan USA (genomica real)</div></div>
+    </div>
+
+    <div class="card">
+        <h3>Pipeline de Producao</h3>
+        <table>
+            <tr><th>Fase</th><th>Descricao</th><th>Motor</th><th>Status</th></tr>
+            <tr><td>1</td><td>Resolucao de pedigree (Sire/MGS/MMGS via NAAB)</td><td>bulls.csv + CDCB</td><td><span class="status-dot ok"></span>258.203 + 92.512 touros</td></tr>
+            <tr><td>2</td><td>Construcao de features (84-196 por trait)</td><td>V11 engine</td><td><span class="status-dot ok"></span>PA + cross-trait + profiles</td></tr>
+            <tr><td>3</td><td>Predicao V11: PA + ML deviation (47 traits)</td><td>5-model ensemble / single</td><td><span class="status-dot ok"></span>Spearman 0.67-0.94</td></tr>
+            <tr><td>4</td><td>Hybrid 3-way (traits fracos, 14 traits)</td><td>Sign + Magnitude + Profile</td><td><span class="status-dot ok"></span>MILK, PL, LIV, MAST, etc.</td></tr>
+            <tr><td>5</td><td>Classificacao por grupo (Elite 5%, Top 10%...)</td><td>Recall@K validado</td><td><span class="status-dot ok"></span>14 traits principais</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Evolucao das Versoes</h3>
+        <table>
+            <tr><th>Versao</th><th>Arquitetura</th><th>Target</th><th>Modelos</th><th>N Traits</th><th>Validacao Ethan</th><th>Status</th></tr>
+            <tr><td><span class="badge badge-blue">V10</span></td><td>Predicao absoluta (PTA direto)</td><td>PTA real</td><td>GBR/LGBM/XGB/RF + Stack</td><td>52</td><td>Perde para PA na maioria</td><td>Descontinuado</td></tr>
+            <tr><td><span class="badge badge-green">V11</span></td><td>PA + Deviation + Hybrid 3-way</td><td>PTA - PA</td><td>5 modelos + Ridge stack + Hybrid</td><td>47</td><td class="winner">54/56 vitorias</td><td>PRODUCAO</td></tr>
+            <tr><td><span class="badge badge-orange">V12</span></td><td>PA + Deviation + Cal. 2-Fatores</td><td>PTA - PA</td><td>LGBM+XGB stack + 2F/DAU cal.</td><td>48</td><td>Perde para V11</td><td>Descontinuado</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Traits por Categoria</h3>
+        <div style="margin-top:8px;">
+            <span class="tag tag-idx">TPI</span><span class="tag tag-idx">NM$</span><span class="tag tag-idx">CM$</span>
+            <span class="tag tag-prod">MILK</span><span class="tag tag-prod">FAT</span><span class="tag tag-prod">FAT%</span><span class="tag tag-prod">PRO</span><span class="tag tag-prod">PRO%</span><span class="tag tag-prod">CFP</span>
+            <span class="tag tag-prod">PL</span><span class="tag tag-prod">LIV</span><span class="tag tag-prod">H_LIV</span>
+            <span class="tag tag-health">SCS</span><span class="tag tag-health">MAST</span><span class="tag tag-health">MET</span><span class="tag tag-health">RP</span><span class="tag tag-health">DA</span><span class="tag tag-health">KET</span><span class="tag tag-health">MF</span>
+            <span class="tag tag-repro">DPR</span><span class="tag tag-repro">HCR</span><span class="tag tag-repro">CCR</span><span class="tag tag-repro">SCE</span><span class="tag tag-repro">DCE</span><span class="tag tag-repro">SSB</span><span class="tag tag-repro">DSB</span><span class="tag tag-repro">GL</span><span class="tag tag-repro">EFC</span>
+            <span class="tag tag-repro">FI</span><span class="tag tag-repro">GFI</span>
+            <span class="tag tag-type">PTAT</span><span class="tag tag-type">UDC</span><span class="tag tag-type">FLC</span>
+            <span class="tag tag-type">STA</span><span class="tag tag-type">STR</span><span class="tag tag-type">DFM</span><span class="tag tag-type">BOD</span><span class="tag tag-type">RUA</span><span class="tag tag-type">RW</span>
+            <span class="tag tag-type">RLS</span><span class="tag tag-type">RLR</span><span class="tag tag-type">FTA</span><span class="tag tag-type">FLS</span><span class="tag tag-type">FTL</span>
+            <span class="tag tag-type">FUA</span><span class="tag tag-type">RUH</span><span class="tag tag-type">RUW</span><span class="tag tag-type">UCL</span><span class="tag tag-type">UDP</span><span class="tag tag-type">FTP</span><span class="tag tag-type">RTP</span>
+            <span class="tag tag-type">BWC</span>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== DATABASES ==================== -->
+<div id="page-databases" class="page">
+    <h1>Bancos de Dados</h1>
+    <div class="subtitle">Todas as fontes de dados utilizadas no treinamento, predicao e validacao</div>
+
+    <div class="card">
+        <h3>Bases de Touros (Lookup de Pedigree)</h3>
+        <table>
+            <tr><th>Base</th><th>Arquivo</th><th>Registros</th><th>Uso</th><th>Formato</th><th>Encoding</th></tr>
+            <tr><td><span class="badge badge-green">bulls.csv</span></td><td>gen-genie-advisor/sms-engine/data/bulls.csv</td><td><strong>258.203</strong></td><td>Lookup principal de PTAs por NAAB</td><td>CSV</td><td>UTF-8-BOM</td></tr>
+            <tr><td><span class="badge badge-blue">CDCB Bull Report</span></td><td>Downloads/Bull_Report (1).csv</td><td><strong>92.512</strong></td><td>Fallback quando touro nao esta no bulls.csv</td><td>CSV</td><td>Latin-1</td></tr>
+        </table>
+        <div class="note">bulls.csv contem NAAB, Nome, Registration Name, PTAs para ~50 traits. CDCB usa colunas como MLK_PTA, FAT_PTA, etc.</div>
+    </div>
+
+    <div class="card">
+        <h3>Dados de Treinamento (Filhas)</h3>
+        <table>
+            <tr><th>Arquivo</th><th>Registros</th><th>Colunas</th><th>Conteudo</th><th>Uso no Treino</th></tr>
+            <tr><td><span class="badge badge-purple">banco21052026.xlsx</span></td><td><strong>5.634</strong></td><td>28</td><td>Filhas com Sire/MGS NAAB + PTAs genomicos</td><td>Principal dataset de filhas</td></tr>
+            <tr><td><span class="badge badge-purple">May 2026.xlsx</span></td><td><strong>1.974</strong></td><td>76</td><td>Filhas adicionais (touros por nome)</td><td>Suplementar</td></tr>
+            <tr><td><span class="badge badge-purple">DAM1-20.xlsx</span></td><td>~1.000+</td><td>Variavel</td><td>Registros de maes com Sire/MGS/MMGS</td><td>Pedigree 3-geracoes</td></tr>
+        </table>
+        <div class="note">Total ~7.608 registros de filhas. V11 treinou com GroupKFold por sire (3 folds) para evitar data leakage.</div>
+    </div>
+
+    <div class="card">
+        <h3>Dados de Validacao</h3>
+        <table>
+            <tr><th>Dataset</th><th>Arquivo</th><th>Animais</th><th>Traits</th><th>Pais</th><th>Uso</th></tr>
+            <tr><td><span class="badge badge-green">Ethan</span></td><td>Downloads/Cliente Ethan.xlsx</td><td><strong>5.624</strong> (4.156 validos)</td><td>14 (TPI, MILK, FAT...)</td><td>USA</td><td>Validacao principal — pedigrees corretos + genomica real</td></tr>
+            <tr><td><span class="badge badge-orange">Jose</span></td><td>Downloads/Cliente Jose Goncalvez.xlsx</td><td><strong>158</strong> (93 com genomica)</td><td>10 (TPI, NM$, MILK...)</td><td>Brasil</td><td>Validacao secundaria — N pequeno</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Resultados Genomicos Reais (Ground Truth)</h3>
+        <table>
+            <tr><th>Arquivo</th><th>Animais</th><th>Traits Disponiveis</th></tr>
+            <tr><td>jose_genomic_results.csv</td><td>93</td><td>TPI, NM$, MILK, FAT, PRO, FAT%, PRO%, PL, DPR, HCR</td></tr>
+            <tr><td>Cliente Ethan.xlsx (colunas genomicas)</td><td>4.156</td><td>TPI, MILK, FAT, FAT%, PRO, PRO%, PL, DPR, CCR, LIV, SCS, MAST, UDC, FLC</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Perfis de Transmissao (pre-calculados)</h3>
+        <table>
+            <tr><th>Versao</th><th>Sire Profiles</th><th>MGS Profiles</th><th>Min. Observacoes</th><th>Fonte</th></tr>
+            <tr><td>V11</td><td>522</td><td>462</td><td>2 filhos</td><td>Filhas apenas</td></tr>
+            <tr><td>V12</td><td>4.161</td><td>3.139</td><td>2 filhos</td><td>BTB + Filhas</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Modelos Salvos (Pickle)</h3>
+        <table>
+            <tr><th>Arquivo</th><th>Conteudo</th><th>Tamanho</th></tr>
+            <tr><td>dsii_v10_results/v10_models.pkl</td><td>52 modelos treinados (GBR/LGBM/XGB/RF + Stack)</td><td>V10 prediz PTA absoluto</td></tr>
+            <tr><td>dsii_v11_results/v11_models.pkl</td><td>47 modelos treinados (5 bases + Ridge stack + Hybrid)</td><td>V11 prediz deviation de PA</td></tr>
+            <tr><td>dsii_v12_results/v12_models.pkl</td><td>48 modelos treinados (LGBM+XGB stack + cal. 2F/DAU)</td><td>V12 prediz deviation de PA</td></tr>
+            <tr><td>dsii_v11_results/v11_sire_profiles.pkl</td><td>522 perfis de transmissao de sires</td><td>V11</td></tr>
+            <tr><td>dsii_v11_results/v11_mgs_profiles.pkl</td><td>462 perfis de transmissao de MGS</td><td>V11</td></tr>
+            <tr><td>dsii_v12_results/ethan_results_by_trait.pkl</td><td>Predicoes Ethan: 14 traits x 6 versoes</td><td>Validacao</td></tr>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== ARCHITECTURE ==================== -->
+<div id="page-architecture" class="page">
+    <h1>Arquitetura dos Motores V10 / V11 / V12</h1>
+    <div class="subtitle">Comparacao detalhada das tres geracoes do motor de predicao</div>
+
+    <div class="grid-2">
+        <div class="card">
+            <h3>V10 — Predicao Absoluta</h3>
+            <div class="formula">PTA_predito = modelo.predict(features)</div>
+            <table>
+                <tr><td>Target</td><td>PTA absoluto</td></tr>
+                <tr><td>Modelos</td><td>GBR, LGBM, XGB, RF (single ou stack top-3)</td></tr>
+                <tr><td>Cross-validation</td><td>Standard KFold</td></tr>
+                <tr><td>Features</td><td>79-93 por trait (sem PA, sem z-scores)</td></tr>
+                <tr><td>Traits</td><td>52</td></tr>
+                <tr><td>Resultado</td><td>Pior que PA em localizacao</td></tr>
+            </table>
+        </div>
+        <div class="card" style="border-color:#51cf66;">
+            <h3 style="color:#51cf66;">V11 — PA + Deviation (PRODUCAO)</h3>
+            <div class="formula">PTA_predito = PA + modelo.predict(features)<br><br>PA = Sire/2 + MGS/4 + MMGS/8</div>
+            <table>
+                <tr><td>Target</td><td><strong>PTA_real - PA</strong> (deviation)</td></tr>
+                <tr><td>Modelos</td><td>GBR, LGBM, XGB, RF, HGBR (5 base)</td></tr>
+                <tr><td>Selecao</td><td>Best single vs Stack top-3 (Ridge)</td></tr>
+                <tr><td>Cross-validation</td><td><strong>GroupKFold por sire (3 folds)</strong></td></tr>
+                <tr><td>Hybrid 3-way</td><td>14 traits fracos (blend Ridge de 4 sinais)</td></tr>
+                <tr><td>Features</td><td>84-114 por trait (com PA, z-scores)</td></tr>
+                <tr><td>Traits</td><td>47</td></tr>
+                <tr><td>Resultado</td><td class="winner">MELHOR: 54/56 vitorias no Ethan</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>V12 — PA + Deviation + Calibracao 2-Fatores</h3>
+        <div class="formula">
+            PTA_2F = c0 + c1 x PA + c2 x ML_deviation<br>
+            PTA_DAU = PA + (d0 + d1 x PA + d2 x dev - PA) x var_expansion
+        </div>
+        <table>
+            <tr><td>Target</td><td>PTA_real - PA (deviation)</td></tr>
+            <tr><td>Modelos</td><td>LGBM + XGB (sempre stack 2)</td></tr>
+            <tr><td>Calibracao</td><td>2-Fatores (c0,c1,c2) + Daughter (d0,d1,d2,ve)</td></tr>
+            <tr><td>Features</td><td>148-196 por trait (com z-scores extras)</td></tr>
+            <tr><td>Traits</td><td>48</td></tr>
+            <tr><td>Resultado</td><td>Pior que V11 na localizacao (1-2 vitorias em 56)</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>V11 Hybrid 3-Way — Detalhe</h3>
+        <p style="font-size:13px;color:#adb5bd;margin-bottom:12px;">Para 14 traits fracos (baixa h2 ou PA negativa), V11 combina 4 sinais via Ridge:</p>
+        <div class="formula">
+            final = Ridge.predict([V11_pred, pred_2stage, pred_anchored, PA])<br><br>
+            V11_pred = PA + deviation (modelo padrao)<br>
+            pred_2stage = sign(classificador) x magnitude(regressor) x confidence<br>
+            pred_anchored = sire_profile_mean x 0.85 + MGS x 0.15 (se n>=5 filhas)<br>
+            PA = Sire/2 + MGS/4 + MMGS/8<br><br>
+            confidence = 0.6 x sign_confidence + 0.4 x min(n_daughters / 30, 1.0)
+        </div>
+        <p style="font-size:13px;color:#adb5bd;margin-top:8px;">Traits com Hybrid 3-way:</p>
+        <div style="margin-top:6px;">
+            <span class="tag tag-prod">MILK</span><span class="tag tag-prod">PL</span><span class="tag tag-prod">LIV</span>
+            <span class="tag tag-health">MAST</span><span class="tag tag-health">MET</span><span class="tag tag-health">RP</span><span class="tag tag-health">DA</span><span class="tag tag-health">KET</span><span class="tag tag-health">MF</span>
+            <span class="tag tag-repro">HCR</span><span class="tag tag-repro">CCR</span><span class="tag tag-repro">DCE</span><span class="tag tag-repro">FI</span>
+            <span class="tag tag-prod">FAT</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Hiperparametros V11</h3>
+        <table>
+            <tr><th>Modelo</th><th>n_estimators</th><th>max_depth</th><th>learning_rate</th><th>subsample</th><th>Regularizacao</th></tr>
+            <tr><td>GBR</td><td>300</td><td>4</td><td>adaptativo</td><td>0.8</td><td>Adaptada a h2</td></tr>
+            <tr><td>LGBM</td><td>300</td><td>5</td><td>adaptativo</td><td>0.8</td><td>Adaptada a h2</td></tr>
+            <tr><td>XGB</td><td>300</td><td>5</td><td>adaptativo</td><td>0.8</td><td>Adaptada a h2</td></tr>
+            <tr><td>RF</td><td>300</td><td>12</td><td>N/A</td><td>bootstrap</td><td>Adaptada a h2</td></tr>
+            <tr><td>HGBR</td><td>300</td><td>5</td><td>adaptativo</td><td>0.8</td><td>Adaptada a h2</td></tr>
+            <tr><td>Meta (Stack)</td><td colspan="5">Ridge(alpha=1.0) sobre top 3 modelos base</td></tr>
+        </table>
+        <div class="note">Regularizacao adaptada: traits com h2 baixa recebem mais regularizacao para evitar overfitting.</div>
+    </div>
+</div>
+
+<!-- ==================== V11 MODELS ==================== -->
+<div id="page-v11models" class="page">
+    <h1>V11 — Modelos por Trait (47 traits)</h1>
+    <div class="subtitle">Arquitetura PA + Deviation &mdash; GroupKFold por sire &mdash; 5 modelos base</div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>Tipo</th><th>Winner / Bases</th><th>Hybrid</th><th>R2 Dev</th><th>PA R2</th><th>N Features</th><th>Categoria</th></tr>
+            </thead>
+            <tbody id="v11-tbody"></tbody>
+        </table>
+    </div>
+    <div class="note">R2 Dev = R2 do modelo na predicao do desvio de PA (cross-validated). PA R2 = R2 de usar somente PA como predicao. Winner = modelo que venceu o torneio.</div>
+</div>
+
+<!-- ==================== V10 MODELS ==================== -->
+<div id="page-v10models" class="page">
+    <h1>V10 — Modelos por Trait (52 traits)</h1>
+    <div class="subtitle">Arquitetura de predicao absoluta (PTA direto, sem PA)</div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>Tipo</th><th>Winner / Bases</th><th>R2 CV</th><th>N Features</th></tr>
+            </thead>
+            <tbody id="v10-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== V12 MODELS ==================== -->
+<div id="page-v12models" class="page">
+    <h1>V12 — Modelos por Trait (48 traits)</h1>
+    <div class="subtitle">PA + Deviation + Calibracao 2-Fatores &mdash; LGBM + XGB Stack</div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>Bases</th><th>R2 Dev</th><th>PA R2</th><th>N Feat</th><th>c0</th><th>c1 (PA)</th><th>c2 (ML)</th><th>d1 (DAU)</th><th>d2 (DAU)</th><th>VarExp</th></tr>
+            </thead>
+            <tbody id="v12-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== COMPARISON ==================== -->
+<div id="page-comparison" class="page">
+    <h1>Comparativo V10 / V11 / V12 — Performance</h1>
+    <div class="subtitle">Baseado na validacao Ethan (4.156 animais USA com genomica real)</div>
+
+    <div class="card">
+        <h3>Spearman, Pearson, MAE, RMSE, Bias por Versao</h3>
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>N</th><th colspan="4">PA</th><th colspan="4">V10</th><th colspan="4">V11</th><th colspan="4">V12_OLD</th></tr>
+                <tr><th></th><th></th><th>rho</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>rho</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>rho</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>rho</th><th>MAE</th><th>RMSE</th><th>Bias</th></tr>
+            </thead>
+            <tbody id="comp-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== ETHAN VALIDATION ==================== -->
+<div id="page-ethan" class="page">
+    <h1>Validacao Ethan — 4.156 Animais USA</h1>
+    <div class="subtitle">Validacao out-of-sample com pedigrees corretos e genomica real</div>
+
+    <div class="kpi-row">
+        <div class="kpi"><div class="label">Animais Validos</div><div class="value">4.156</div><div class="sub">de 5.624 no arquivo</div></div>
+        <div class="kpi"><div class="label">Vitorias V11</div><div class="value green">54/56</div><div class="sub">4 granularidades x 14 traits</div></div>
+        <div class="kpi"><div class="label">Spearman V11</div><div class="value green">0.774</div><div class="sub">media 14 traits</div></div>
+        <div class="kpi"><div class="label">Melhor Spearman</div><div class="value">0.944</div><div class="sub">TPI</div></div>
+    </div>
+
+    <div class="card">
+        <h3>Acuracia de Localizacao — V11 (Exact Match %)</h3>
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>N</th><th>Spearman</th><th>Quartil 25%</th><th>Quintil 20%</th><th>Decil 10%</th><th>Vigintil 5%</th><th>Random Q</th><th>Random V</th></tr>
+            </thead>
+            <tbody id="ethan-loc-tbody"></tbody>
+        </table>
+        <div class="note">Random: Quartil=25%, Quintil=20%, Decil=10%, Vigintil=5%. Valores acima do random indicam poder preditivo real.</div>
+    </div>
+</div>
+
+<!-- ==================== GRANULARITY ==================== -->
+<div id="page-granularity" class="page">
+    <h1>Granularidade por Trait — Limites de Predicao</h1>
+    <div class="subtitle">Ate que nivel de granularidade cada trait mantem boa performance</div>
+
+    <div class="card">
+        <h3>Top Group Accuracy — V11 (% dos TOP reais identificados corretamente)</h3>
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>h2</th><th>Spearman</th><th>Top Q25%</th><th>Top Q20%</th><th>Top D10%</th><th>Top V5%</th><th>Limite</th></tr>
+            </thead>
+            <tbody id="gran-tbody"></tbody>
+        </table>
+        <div class="note">
+            Legenda: <span style="color:#51cf66;">verde >=50%</span> | <span style="color:#ffa94d;">laranja >=35%</span> | <span style="color:#ff6b6b;">vermelho &lt;35%</span>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== TOP GROUP ==================== -->
+<div id="page-topgroup" class="page">
+    <h1>Top Group & Recall@K</h1>
+    <div class="subtitle">Estrategia de selecao: selecionar top K% predito para capturar o top 5% real</div>
+
+    <div class="card">
+        <h3>Como Funciona</h3>
+        <p style="font-size:13px;color:#adb5bd;line-height:1.7;">
+            Em um rebanho de 1.000 animais, os top 5% = 50 animais. Se selecionarmos os top 10% preditos (100 animais),
+            quantos dos 50 realmente melhores estao entre esses 100? Essa e a metrica de <strong>Recall@K</strong>.
+        </p>
+    </div>
+
+    <div class="card">
+        <h3>Recall@K por Trait — V11</h3>
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>Top 5% Acc</th><th>Recall@10%</th><th>Recall@15%</th><th>Recall@20%</th><th>Recall@25%</th></tr>
+            </thead>
+            <tbody id="recall-tbody"></tbody>
+        </table>
+        <div class="note">Recall@10% = "Se seleciono os 10% melhores preditos, capturo X% dos 5% realmente melhores". Validado no Ethan (4.156 animais).</div>
+    </div>
+
+    <div class="card">
+        <h3>Estrategia de Producao</h3>
+        <div class="formula">
+            Selecionar top 10% predito: Recall medio = 67% (captura ~2/3 dos top 5% reais)<br>
+            Selecionar top 15% predito: Recall medio = 78% (captura ~3/4 dos top 5% reais)<br><br>
+            Exemplo FAT: top 10% predito captura 85% dos top 5% reais<br>
+            Exemplo DPR: top 10% predito captura 79% dos top 5% reais
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SMALL N ==================== -->
+<div id="page-smalln" class="page">
+    <h1>Efeito de N Pequeno</h1>
+    <div class="subtitle">Como o recall se comporta com rebanhos menores (50 a 4.000 animais)</div>
+
+    <div class="card">
+        <h3>Recall Medio (14 traits) por Tamanho de Rebanho</h3>
+        <table>
+            <thead>
+                <tr><th>Estrategia</th><th>N=50</th><th>N=100</th><th>N=200</th><th>N=500</th><th>N=1.000</th><th>N=2.000</th><th>N=4.000</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Top 5% Accuracy</td><td>39.3%</td><td>43.4%</td><td>43.6%</td><td>44.5%</td><td>44.7%</td><td>44.8%</td><td>44.1%</td></tr>
+                <tr><td><strong>Recall@10%</strong></td><td><strong>67.0%</strong></td><td><strong>65.1%</strong></td><td><strong>65.7%</strong></td><td><strong>66.6%</strong></td><td><strong>66.9%</strong></td><td><strong>66.9%</strong></td><td><strong>65.1%</strong></td></tr>
+                <tr><td><strong>Recall@15%</strong></td><td><strong>75.8%</strong></td><td><strong>76.8%</strong></td><td><strong>77.2%</strong></td><td><strong>77.7%</strong></td><td><strong>77.9%</strong></td><td><strong>78.0%</strong></td><td><strong>76.5%</strong></td></tr>
+            </tbody>
+        </table>
+        <div class="note">Resultado: Recall@10% e Recall@15% sao <strong>estaveis</strong> mesmo com N=50. Nao ha degradacao significativa com rebanhos pequenos. Validado com 200 subamostragens aleatorias do Ethan.</div>
+    </div>
+
+    <div class="card">
+        <h3>Recall@10% por Trait e N (subamostragem)</h3>
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>N=50</th><th>N=100</th><th>N=200</th><th>N=500</th><th>N=1.000</th><th>N=4.000</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>TPI</td><td>75.5%</td><td>74.6%</td><td>74.2%</td><td>74.2%</td><td>74.3%</td><td>-</td></tr>
+                <tr><td>FAT</td><td>84.8%</td><td>82.6%</td><td>83.2%</td><td>83.7%</td><td>84.2%</td><td>84.7%</td></tr>
+                <tr><td>DPR</td><td>74.8%</td><td>73.2%</td><td>75.4%</td><td>78.1%</td><td>77.8%</td><td>78.0%</td></tr>
+                <tr><td>FLC</td><td>81.5%</td><td>78.1%</td><td>77.8%</td><td>79.3%</td><td>79.2%</td><td>-</td></tr>
+                <tr><td>CCR</td><td>71.5%</td><td>70.2%</td><td>70.2%</td><td>71.7%</td><td>72.8%</td><td>73.6%</td></tr>
+                <tr><td>SCS</td><td>66.8%</td><td>66.9%</td><td>67.9%</td><td>69.7%</td><td>69.5%</td><td>70.2%</td></tr>
+                <tr><td>MILK</td><td>61.2%</td><td>55.9%</td><td>55.2%</td><td>55.1%</td><td>55.3%</td><td>54.7%</td></tr>
+                <tr><td>MAST</td><td>49.0%</td><td>47.5%</td><td>48.9%</td><td>48.6%</td><td>48.8%</td><td>50.4%</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== FEATURES ==================== -->
+<div id="page-features" class="page">
+    <h1>Features & Correlacoes Geneticas</h1>
+    <div class="subtitle">Grupos de features usados na construcao da matriz de predicao</div>
+
+    <div class="card">
+        <h3>Categorias de Features (V11: 84-114 por trait)</h3>
+        <table>
+            <thead><tr><th>Grupo</th><th>Features</th><th>Descricao</th></tr></thead>
+            <tbody>
+                <tr><td>PA</td><td>pa, pa_z</td><td>Parent Average (raw + normalizado por SD)</td></tr>
+                <tr><td>Sire</td><td>sire, sire_z, sire_sq, sire_h2, sire_dev_from_pa</td><td>PTA do pai + z-score + quadratico + h2-ponderado</td></tr>
+                <tr><td>MGS</td><td>mgs_val, mgs_z, mgs_sq, has_mgs</td><td>PTA do avo materno + z-score</td></tr>
+                <tr><td>MMGS</td><td>mmgs_val, has_mmgs, sire_x_mmgs</td><td>PTA do bisavo materno</td></tr>
+                <tr><td>Interacoes</td><td>sire_x_mgs, sire_mgs_diff, sire_mgs_ratio, sire_mgs_mean, mendelian_range, mendelian_range_z</td><td>Interacoes sire x MGS para variancia mendeliana</td></tr>
+                <tr><td>Cross-trait</td><td>sire_{OT}, mgs_{OT}, pa_{OT}</td><td>20 core traits cruzados</td></tr>
+                <tr><td>Correl. Genetica</td><td>gc_pa_{OT}, gc_sire_{OT}, gc_mgs_{OT}</td><td>Borrowing strength: valor x correlacao genetica</td></tr>
+                <tr><td>Sire Profile</td><td>sire_prof_n, _mean, _std, _ratio, _resid, _dev_pa</td><td>Perfil de transmissao do sire</td></tr>
+                <tr><td>MGS Profile</td><td>mgs_prof_n, _mean, _resid</td><td>Perfil de transmissao do MGS</td></tr>
+                <tr><td>Cross Profile</td><td>sire_prof_{OT}</td><td>Residual do perfil em outros traits</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Correlacoes Geneticas Usadas</h3>
+        <table>
+            <thead><tr><th>Trait 1</th><th>Trait 2</th><th>Corr.</th><th>Forca</th></tr></thead>
+            <tbody id="corr-tbody"></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>SD Genetico & Herdabilidade</h3>
+        <table>
+            <thead><tr><th>Trait</th><th>SD Genetico</th><th>h2</th><th>Categoria</th></tr></thead>
+            <tbody id="sd-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== PROFILES ==================== -->
+<div id="page-profiles" class="page">
+    <h1>Perfis de Transmissao</h1>
+    <div class="subtitle">Perfis empiricos calculados a partir dos dados de treino</div>
+
+    <div class="kpi-row">
+        <div class="kpi"><div class="label">Sires V11</div><div class="value">522</div></div>
+        <div class="kpi"><div class="label">MGS V11</div><div class="value">462</div></div>
+        <div class="kpi"><div class="label">Sires V12</div><div class="value">4.161</div></div>
+        <div class="kpi"><div class="label">MGS V12</div><div class="value">3.139</div></div>
+    </div>
+
+    <div class="card">
+        <h3>Estrutura do Perfil de Transmissao</h3>
+        <table>
+            <thead><tr><th>Campo</th><th>Formula</th><th>Descricao</th></tr></thead>
+            <tbody>
+                <tr><td>n</td><td>count(filhos)</td><td>Numero de filhos observados</td></tr>
+                <tr><td>mean</td><td>mean(PTA_filhos)</td><td>Media dos PTAs dos filhos</td></tr>
+                <tr><td>std</td><td>std(PTA_filhos)</td><td>Desvio padrao</td></tr>
+                <tr><td>trans_ratio</td><td>mean / (sire_PTA / 2)</td><td>Razao de transmissao vs esperado</td></tr>
+                <tr><td>residual</td><td>mean - sire_PTA / 2</td><td>Desvio da transmissao esperada</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== CALIBRATION ==================== -->
+<div id="page-calibration" class="page">
+    <h1>Calibracao V12 (2-Fatores + Daughter)</h1>
+    <div class="subtitle">Parametros c0, c1, c2 (2F) e d0, d1, d2, var_expansion (Daughter) — Descontinuada na producao</div>
+
+    <div class="card">
+        <h3>Formulas de Calibracao</h3>
+        <div class="formula">
+            Calibracao 2-Fatores:<br>
+            PTA_2F = c0 + c1 x PA + c2 x ML_deviation<br><br>
+            Calibracao Daughter:<br>
+            raw = d0 + d1 x PA + d2 x ML_deviation<br>
+            PTA_DAU = PA + (raw - PA) x var_expansion
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Parametros por Trait</h3>
+        <table>
+            <thead>
+                <tr><th>Trait</th><th>c0</th><th>c1 (PA)</th><th>c2 (ML)</th><th>d0</th><th>d1</th><th>d2</th><th>VarExp</th></tr>
+            </thead>
+            <tbody id="cal-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ==================== FORMULAS ==================== -->
+<div id="page-formulas" class="page">
+    <h1>Formulas & Indices</h1>
+    <div class="subtitle">Parent Average, indices compostos, pesos de treinamento</div>
+
+    <div class="card">
+        <h3>Parent Average (PA)</h3>
+        <div class="formula">
+            PA = Sire_PTA / 2 + MGS_PTA / 4 + MMGS_PTA / 8<br><br>
+            Se MGS ausente: PA = Sire_PTA / 2<br>
+            Se MMGS ausente: PA = Sire_PTA / 2 + MGS_PTA / 4
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Fertility Index (FI)</h3>
+        <div class="formula">FI = 0.4 x DPR + 0.4 x CCR + 0.1 x HCR + 0.1 x EFC &nbsp;(CDCB 2024)</div>
+    </div>
+
+    <div class="card">
+        <h3>Net Merit (NM$)</h3>
+        <div class="formula">
+            NM$ = -0.089 x MILK + 1.20 x FAT + 1.86 x PRO + 28.0 x PL - 176.0 x SCS<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 11.6 x DPR + 3.8 x HCR + 5.2 x CCR + 14.0 x LIV - 3.4 x MAST<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 17.5 x PTAT + 14.8 x UDC + 5.2 x FLC
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Cheese Merit (CM$)</h3>
+        <div class="formula">
+            CM$ = -0.15 x MILK + 0.85 x FAT + 2.60 x PRO + 26.0 x PL - 165.0 x SCS<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 11.0 x DPR + 3.5 x HCR + 5.0 x CCR + 13.0 x LIV - 3.2 x MAST<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ 19.0 x PTAT + 16.0 x UDC + 5.5 x FLC
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Pesos de Treinamento (V12)</h3>
+        <div class="grid-2">
+            <div>
+                <div class="formula">
+                    w_gen = 0.5 + 0.5 x min((DOB_year - 1990) / 30, 1.0)<br>
+                    w_rel = Reliability / 100<br>
+                    w_final = w_gen x w_rel<br>
+                    Filhas: w = 1.0 (fixo)
+                </div>
+            </div>
+            <div>
+                <div class="formula">
+                    Filtros BTB:<br>
+                    - Reliability >= 75%<br>
+                    - DOB >= 2005<br>
+                    - Sire stack parseado
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== PRODUCTION ==================== -->
+<div id="page-production" class="page">
+    <h1>Script de Producao</h1>
+    <div class="subtitle">dsii_production_predict.py — Motor final V11 com classificacao por grupo</div>
+
+    <div class="card">
+        <h3>Uso</h3>
+        <div class="formula">
+            # Com arquivo padrao (Jose):<br>
+            python dsii_production_predict.py<br><br>
+            # Com arquivo especifico:<br>
+            python dsii_production_predict.py "C:\caminho\arquivo_cliente.xlsx"<br><br>
+            # Com saida customizada:<br>
+            python dsii_production_predict.py arquivo.xlsx --output resultado.xlsx
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Saida (Excel com 3 abas)</h3>
+        <table>
+            <tr><th>Aba</th><th>Conteudo</th></tr>
+            <tr><td><span class="badge badge-green">Predicoes</span></td><td>Valores individuais por trait por animal (47 traits). O que o cliente ve.</td></tr>
+            <tr><td><span class="badge badge-blue">Grupos</span></td><td>Classificacao por grupo (Elite 5%, Top 10%, Superior 20%, Acima Media, Media, Abaixo Media) + percentil + recall validado</td></tr>
+            <tr><td><span class="badge badge-orange">Confianca</span></td><td>Tabela de confianca por trait: quantos animais em cada grupo, recall@5%, @10%, @15%, @20%</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Predicoes Realizadas</h3>
+        <table>
+            <thead><tr><th>Cliente</th><th>Animais</th><th>Sucesso</th><th>Engine</th><th>Arquivo</th></tr></thead>
+            <tbody>
+                <tr><td>Jose Goncalvez</td><td>158</td><td>158 (100%)</td><td>V11 Producao</td><td>Cliente Jose Goncalvez_DSII_V11.xlsx</td></tr>
+                <tr><td>Daniel</td><td>834</td><td>834 (100%)</td><td>V12</td><td>daniel_predictions_v12.xlsx</td></tr>
+                <tr><td>Ethan (validacao)</td><td>5.624</td><td>4.156 (74%)</td><td>V10/V11/V12</td><td>ethan_results_by_trait.pkl</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div><!-- .main -->
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const CATS = {TPI:'Indice',MILK:'Producao',FAT:'Producao','FAT%':'Producao',PRO:'Producao','PRO%':'Producao',CFP:'Producao',PL:'Longevidade',LIV:'Longevidade','H_LIV':'Longevidade',SCS:'Saude',MAST:'Saude',MET:'Saude',RP:'Saude',DA:'Saude',KET:'Saude',MF:'Saude',DPR:'Reproducao',HCR:'Reproducao',CCR:'Reproducao',SCE:'Reproducao',DCE:'Reproducao',SSB:'Reproducao',DSB:'Reproducao',GL:'Reproducao',EFC:'Reproducao',FI:'Eficiencia',GFI:'Eficiencia','F_SAV':'Eficiencia',RFI:'Eficiencia',PTAT:'Tipo',UDC:'Tipo',FLC:'Tipo',STA:'Tipo',STR:'Tipo',DFM:'Tipo',BOD:'Tipo',RUA:'Tipo',RW:'Tipo',RLS:'Tipo',RLR:'Tipo',FTA:'Tipo',FLS:'Tipo',FTL:'Tipo',FUA:'Tipo',RUH:'Tipo',RUW:'Tipo',UCL:'Tipo',UDP:'Tipo',FTP:'Tipo',RTP:'Tipo',BWC:'Tipo','NM$':'Indice','CM$':'Indice'};
+const GENETIC_SD = {TPI:250,MILK:675,FAT:29,'FAT%':0.05,PRO:19,'PRO%':0.02,CFP:40,PL:1.85,LIV:1.2,'H_LIV':1.0,SCS:0.14,MAST:1.0,MET:1.0,RP:0.5,DA:0.5,KET:0.8,MF:0.3,DPR:1.3,HCR:1.5,CCR:1.65,SCE:0.8,DCE:0.8,SSB:1.0,DSB:1.0,GL:0.8,EFC:1.0,FI:1.0,'F_SAV':50,RFI:30,GFI:3.0,PTAT:0.70,UDC:0.75,FLC:0.65,STA:0.80,STR:0.70,DFM:0.80,BOD:0.60,RUA:0.60,RW:0.70,RLS:0.50,RLR:0.50,FTA:0.60,FLS:0.50,FTL:0.50,FUA:0.80,RUH:0.80,RUW:0.80,UCL:0.60,UDP:0.80,FTP:0.70,RTP:0.60,BWC:0.50,'NM$':200,'CM$':200};
+const H2 = {TPI:0.30,MILK:0.25,FAT:0.25,'FAT%':0.50,PRO:0.25,'PRO%':0.50,CFP:0.25,PL:0.08,LIV:0.05,'H_LIV':0.05,SCS:0.12,MAST:0.04,MET:0.03,RP:0.02,DA:0.04,KET:0.04,MF:0.02,DPR:0.04,HCR:0.04,CCR:0.04,SCE:0.08,DCE:0.06,SSB:0.05,DSB:0.04,GL:0.40,EFC:0.06,FI:0.06,'F_SAV':0.15,RFI:0.15,GFI:0.15,PTAT:0.30,UDC:0.25,FLC:0.15,STA:0.42,STR:0.27,DFM:0.25,BOD:0.30,RUA:0.30,RW:0.25,RLS:0.15,RLR:0.10,FTA:0.10,FLS:0.10,FTL:0.10,FUA:0.25,RUH:0.20,RUW:0.20,UCL:0.15,UDP:0.30,FTP:0.25,RTP:0.20,BWC:0.20,'NM$':0.30,'CM$':0.30};
+const CORRELATIONS = [['MILK','DPR',-0.35],['MILK','CCR',-0.30],['MILK','SCS',0.10],['MILK','PL',-0.15],['FAT','PRO',0.65],['FAT','DPR',-0.25],['PRO','DPR',-0.30],['DPR','CCR',0.55],['DPR','PL',0.45],['SCS','PL',-0.30],['SCS','MAST',0.70],['PTAT','UDC',0.40],['PTAT','FLC',0.30],['MILK','FAT',0.55],['MILK','PRO',0.85],['PL','LIV',0.85],['DPR','FI',0.70],['HCR','CCR',0.60],['HCR','DPR',0.50],['SCE','DCE',0.60],['SSB','DSB',0.55],['MAST','MET',0.30],['MAST','DA',0.20],['KET','DA',0.35],['MET','RP',0.30],['STA','STR',0.25],['STA','BOD',0.40],['PTAT','STA',0.30],['UDC','FUA',0.70],['UDC','RUH',0.65],['UDC','UDP',0.60],['UDC','UCL',0.40],['FLC','FTA',0.50],['FLC','RLS',0.35],['FLC','RLR',0.40],['FLC','FLS',0.60],['PL','H_LIV',0.65],['LIV','H_LIV',0.70],['PL','MAST',-0.30],['CCR','PL',0.35],['HCR','PL',0.30]];
+
+// V11 models data: [trait, type, winner/bases, hybrid, r2dev, par2, nfeat]
+const V11 = [
+['TPI','single','LGBM','none',0.943,-13.790,100],['MILK','stack','RF+GBR+XGB','hybrid_3way',0.570,0.067,114],['FAT','single','RF','hybrid_3way',0.764,0.184,108],['FAT%','stack','RF+GBR+XGB','none',0.350,0.386,96],['PRO','stack','LGBM+GBR+RF','none',0.771,0.027,105],['PRO%','single','RF','none',0.265,0.395,96],['CFP','single','GBR','none',0.748,-0.657,101],['PL','single','GBR','hybrid_3way',0.702,-0.238,114],['LIV','stack','RF+GBR+XGB','hybrid_3way',0.355,0.325,99],['SCS','stack','GBR+XGB+HGBR','none',0.950,-55.667,105],['MAST','stack','RF+GBR+LGBM','hybrid_3way',0.292,0.305,108],['MET','single','GBR','hybrid_3way',0.998,-421.259,107],['RP','single','LGBM','hybrid_3way',0.998,-1659.482,104],['DA','single','LGBM','hybrid_3way',0.998,-1154.425,107],['KET','stack','HGBR+GBR+LGBM','hybrid_3way',0.998,-397.247,104],['MF','single','GBR','hybrid_3way',0.999,-26509.764,101],['DPR','stack','RF+GBR+XGB','none',0.380,0.181,114],['HCR','single','RF','hybrid_3way',0.409,-0.039,103],['CCR','stack','RF+GBR+LGBM','hybrid_3way',0.363,0.226,105],['SCE','single','XGB','none',0.688,-2.298,100],['DCE','single','XGB','hybrid_3way',0.744,-3.825,104],['SSB','single','XGB','none',0.879,-12.932,104],['DSB','stack','XGB+GBR+LGBM','none',0.822,-5.647,104],['FI','stack','GBR+XGB+LGBM','hybrid_3way',0.995,-11028.767,89],['GFI','stack','HGBR+GBR+LGBM','none',0.464,-41.934,84],['PTAT','stack','XGB+LGBM+HGBR','none',0.505,0.443,106],['UDC','single','GBR','none',0.600,-0.110,112],['FLC','single','XGB','none',0.311,0.497,112],['STA','stack','RF+XGB+GBR','none',0.425,0.211,109],['STR','stack','RF+GBR+XGB','none',0.500,-0.045,103],['DFM','stack','RF+GBR+HGBR','none',0.501,-0.214,101],['BOD','single','RF','none',0.632,-0.346,104],['RUA','stack','XGB+RF+GBR','none',0.407,-0.436,101],['RW','stack','RF+GBR+LGBM','none',0.409,0.427,100],['RLS','single','RF','none',0.393,-0.068,104],['RLR','single','XGB','none',0.563,0.090,104],['FTA','stack','RF+LGBM+XGB','none',0.596,-0.163,104],['FLS','single','HGBR','none',0.543,0.118,104],['FUA','single','GBR','none',0.633,-0.393,104],['RUH','stack','GBR+XGB+RF','none',0.662,-0.650,104],['RUW','single','XGB','none',0.648,-0.524,101],['UCL','stack','RF+GBR+LGBM','none',0.372,0.260,103],['UDP','stack','RF+XGB+LGBM','none',0.371,0.159,103],['FTP','single','RF','none',0.488,-0.273,101],['RTP','single','RF','none',0.466,-0.117,101],['NM$','stack','GBR+LGBM+HGBR','none',0.866,-0.754,109],['CM$','single','GBR','none',0.863,-0.758,104]
+];
+
+// V10 models data: [trait, type, winner/bases, r2cv, nfeat]
+const V10 = [
+['TPI','single','GBR',0.893,81],['MILK','stack','LGBM+GBR+RF',0.661,91],['FAT','stack','LGBM+GBR+XGB',0.867,87],['FAT%','stack','GBR+LGBM+RF',0.607,79],['PRO','stack','LGBM+GBR+RF',0.828,85],['PRO%','stack','RF+LGBM+GBR',0.513,79],['CFP','stack','LGBM+RF+GBR',0.874,78],['PL','stack','GBR+LGBM+RF',0.718,93],['LIV','stack','RF+LGBM+GBR',0.559,83],['H_LIV','single','RF',0.370,82],['SCS','stack','LGBM+RF+GBR',0.510,85],['MAST','stack','RF+LGBM+GBR',0.510,87],['MET','single','RF',0.672,85],['RP','stack','RF+LGBM+GBR',0.450,83],['DA','single','RF',0.685,85],['KET','single','RF',0.728,83],['MF','single','RF',0.415,81],['DPR','stack','RF+LGBM+GBR',0.514,93],['HCR','stack','RF+LGBM+GBR',0.426,79],['CCR','stack','RF+LGBM+GBR',0.494,85],['SCE','stack','RF+GBR+LGBM',0.627,79],['DCE','stack','RF+LGBM+GBR',0.418,80],['SSB','stack','RF+LGBM+GBR',0.645,82],['DSB','stack','RF+LGBM+GBR',0.488,80],['GL','stack','RF+LGBM+GBR',0.491,82],['EFC','stack','RF+LGBM+GBR',0.669,78],['FI','stack','RF+GBR+LGBM',0.441,85],['F_SAV','stack','RF+LGBM+GBR',0.699,79],['RFI','single','RF',0.430,85],['GFI','stack','RF+LGBM+GBR',0.524,62],['PTAT','stack','RF+GBR+LGBM',0.737,85],['UDC','stack','RF+GBR+LGBM',0.638,89],['FLC','stack','RF+GBR+LGBM',0.709,89],['STA','stack','RF+GBR+LGBM',0.562,84],['STR','stack','RF+LGBM+GBR',0.549,80],['DFM','stack','RF+LGBM+GBR',0.547,82],['BOD','single','RF',0.638,84],['RUA','stack','RF+XGB+LGBM',0.357,82],['RW','stack','RF+GBR+LGBM',0.618,78],['RLS','single','RF',0.489,84],['RLR','stack','RF+GBR+LGBM',0.809,84],['FTA','single','RF',0.781,84],['FLS','single','RF',0.768,84],['FUA','single','RF',0.633,84],['RUH','single','RF',0.625,84],['RUW','single','RF',0.589,82],['UCL','stack','RF+GBR+LGBM',0.570,80],['UDP','stack','RF+LGBM+GBR',0.511,80],['FTP','stack','RF+LGBM+GBR',0.486,82],['RTP','stack','RF+XGB+GBR',0.471,82],['NM$','single','LGBM',0.899,82],['CM$','single','LGBM',0.897,80]
+];
+
+// V12 cal data: [trait, bases, r2dev, par2, nfeat, c0,c1,c2, d1,d2,ve]
+const V12 = [
+['TPI','XGB+LGBM',0.917,-0.647,154,7.703,0.994,0.999,0.908,0.937,1.045],['MILK','XGB+LGBM',0.684,-0.001,184,-2.789,0.991,0.997,1.031,1.019,1.352],['FAT','LGBM+XGB',0.836,0.184,172,-0.211,0.985,1.000,1.006,1.017,1.139],['FAT%','XGB+LGBM',0.565,0.088,148,0.000,0.988,1.000,1.002,1.028,1.678],['PRO','XGB+LGBM',0.832,0.088,166,-0.077,0.993,0.999,1.033,0.998,1.147],['PRO%','XGB+LGBM',0.550,-0.000,148,0.000,0.988,1.001,1.002,0.989,1.974],['CFP','LGBM+XGB',0.859,0.135,155,-0.429,0.985,0.999,0.994,1.039,1.124],['PL','XGB+LGBM',0.757,0.074,196,-0.012,0.987,0.998,1.032,1.020,1.225],['LIV','LGBM+XGB',0.549,0.105,154,-0.005,0.989,0.997,1.017,0.972,1.797],['SCS','LGBM+XGB',0.716,-17.295,166,-0.008,1.000,1.002,0.984,0.979,1.028],['MAST','LGBM+XGB',0.507,0.023,172,-0.003,0.984,0.994,1.030,0.979,2.077],['DPR','LGBM+XGB',0.623,-0.042,184,0.004,0.986,0.993,1.030,0.992,1.684],['HCR','XGB+LGBM',0.532,0.087,166,-0.002,0.991,0.997,1.081,1.016,1.655],['CCR','LGBM+XGB',0.624,-0.050,172,0.002,0.995,0.997,1.029,0.973,1.788],['SCE','LGBM+XGB',0.701,-0.077,154,0.011,0.991,0.997,0.966,0.994,1.219],['PTAT','LGBM+XGB',0.678,0.094,166,-0.004,0.989,0.996,1.038,0.996,1.457],['UDC','LGBM+XGB',0.842,0.219,178,-0.000,0.996,1.000,0.725,0.635,1.544],['FLC','XGB+LGBM',0.537,-0.123,178,-0.001,0.995,0.996,0.999,1.015,1.801],['NM$','LGBM+XGB',0.887,0.151,172,-3.316,0.984,0.999,1.015,0.999,1.080]
+];
+
+// Ethan validation: [trait, N, {version: {rho,r,mae,rmse,bias,sd}}]
+const ETHAN = [
+['TPI',3198,{PA:{rho:0.426,mae:849.1,rmse:921.3,bias:-849.1},V10:{rho:0.928,mae:145.5,rmse:182.4,bias:-109.2},V11:{rho:0.944,mae:116.7,rmse:148.6,bias:-78.1},V12:{rho:0.639,mae:321.7,rmse:377.0,bias:-235.3}}],
+['MILK',4156,{PA:{rho:0.719,mae:323.5,rmse:406.2,bias:-13.1},V10:{rho:0.728,mae:324.6,rmse:410.0,bias:-22.5},V11:{rho:0.750,mae:306.1,rmse:385.9,bias:39.0},V12:{rho:0.718,mae:324.4,rmse:407.2,bias:20.5}}],
+['FAT',4156,{PA:{rho:0.899,mae:13.7,rmse:17.3,bias:-0.3},V10:{rho:0.888,mae:14.0,rmse:17.6,bias:0.3},V11:{rho:0.912,mae:12.8,rmse:16.3,bias:1.6},V12:{rho:0.884,mae:15.0,rmse:19.2,bias:4.8}}],
+['FAT%',4156,{PA:{rho:0.761,mae:0.07,rmse:0.09,bias:0.00},V10:{rho:0.766,mae:0.07,rmse:0.09,bias:0.01},V11:{rho:0.797,mae:0.06,rmse:0.08,bias:0.01},V12:{rho:0.760,mae:0.07,rmse:0.09,bias:0.01}}],
+['PRO',4156,{PA:{rho:0.863,mae:8.1,rmse:10.3,bias:0.2},V10:{rho:0.863,mae:8.0,rmse:10.3,bias:-0.8},V11:{rho:0.885,mae:7.6,rmse:9.5,bias:0.4},V12:{rho:0.850,mae:8.6,rmse:10.9,bias:2.8}}],
+['PRO%',4156,{PA:{rho:0.747,mae:0.03,rmse:0.03,bias:0.00},V10:{rho:0.747,mae:0.03,rmse:0.04,bias:0.01},V11:{rho:0.772,mae:0.03,rmse:0.03,bias:0.01},V12:{rho:0.750,mae:0.03,rmse:0.03,bias:0.01}}],
+['PL',4156,{PA:{rho:0.775,mae:0.83,rmse:1.03,bias:-0.23},V10:{rho:0.782,mae:0.82,rmse:1.04,bias:-0.01},V11:{rho:0.801,mae:0.77,rmse:0.98,bias:0.23},V12:{rho:0.778,mae:0.81,rmse:1.02,bias:0.16}}],
+['DPR',4156,{PA:{rho:0.639,mae:0.81,rmse:1.02,bias:0.06},V10:{rho:0.628,mae:0.89,rmse:1.13,bias:0.23},V11:{rho:0.686,mae:0.76,rmse:0.95,bias:-0.01},V12:{rho:0.638,mae:0.80,rmse:1.01,bias:-0.01}}],
+['CCR',4156,{PA:{rho:0.631,mae:0.93,rmse:1.17,bias:0.06},V10:{rho:0.593,mae:1.03,rmse:1.32,bias:0.25},V11:{rho:0.670,mae:0.88,rmse:1.11,bias:-0.06},V12:{rho:0.622,mae:0.93,rmse:1.17,bias:-0.05}}],
+['LIV',4156,{PA:{rho:0.677,mae:0.99,rmse:1.23,bias:-0.20},V10:{rho:0.665,mae:1.04,rmse:1.31,bias:-0.06},V11:{rho:0.721,mae:0.92,rmse:1.16,bias:-0.06},V12:{rho:0.665,mae:0.99,rmse:1.25,bias:-0.09}}],
+['SCS',4156,{PA:{rho:0.546,mae:0.91,rmse:0.96,bias:-0.91},V10:{rho:0.701,mae:0.10,rmse:0.12,bias:-0.05},V11:{rho:0.760,mae:0.09,rmse:0.11,bias:-0.05},V12:{rho:0.725,mae:0.09,rmse:0.12,bias:-0.05}}],
+['MAST',4156,{PA:{rho:0.719,mae:0.87,rmse:1.10,bias:0.07},V10:{rho:0.700,mae:1.01,rmse:1.32,bias:0.41},V11:{rho:0.749,mae:0.87,rmse:1.11,bias:0.34},V12:{rho:0.707,mae:0.91,rmse:1.15,bias:0.19}}],
+['UDC',3198,{PA:{rho:0.734,mae:0.35,rmse:0.46,bias:0.15},V10:{rho:0.724,mae:0.36,rmse:0.47,bias:0.06},V11:{rho:0.754,mae:0.34,rmse:0.44,bias:0.16},V12:{rho:0.724,mae:0.39,rmse:0.56,bias:0.25}}],
+['FLC',3198,{PA:{rho:0.769,mae:0.26,rmse:0.33,bias:0.03},V10:{rho:0.772,mae:0.30,rmse:0.38,bias:0.06},V11:{rho:0.805,mae:0.24,rmse:0.30,bias:0.02},V12:{rho:0.759,mae:0.26,rmse:0.34,bias:0.04}}]
+];
+
+// Granularity: [trait, h2, rho, topQ25, topQ20, topD10, topV5]
+const GRAN = [
+['TPI',0.30,0.944,80.5,76.7,61.9,43.1],['MILK',0.25,0.750,64.0,59.8,48.8,41.8],['FAT',0.25,0.912,76.9,75.1,69.2,57.7],['FAT%',0.50,0.797,68.2,64.0,50.0,41.8],['PRO',0.25,0.885,75.4,69.4,53.8,44.2],['PRO%',0.50,0.772,61.8,56.1,42.3,34.6],['PL',0.08,0.801,64.1,61.6,51.4,44.2],['DPR',0.04,0.686,64.5,59.9,57.2,59.1],['CCR',0.04,0.670,62.3,59.7,56.5,52.4],['LIV',0.05,0.721,61.2,56.1,44.0,35.1],['SCS',0.12,0.760,69.2,67.3,59.4,44.2],['MAST',0.04,0.749,58.3,54.3,40.6,31.2],['UDC',0.25,0.754,64.5,60.0,50.6,43.1],['FLC',0.15,0.805,69.9,67.2,61.3,57.5]
+];
+
+// Recall@K: [trait, top5acc, r10, r15, r20, r25]
+const RECALL = [
+['TPI',43,74,85,88,94],['MILK',42,54,67,75,84],['FAT',58,85,96,97,99],['FAT%',42,67,79,84,90],['PRO',44,63,78,87,94],['PRO%',35,55,70,81,86],['PL',44,66,80,83,87],['DPR',59,79,85,89,93],['CCR',52,73,79,84,88],['LIV',35,54,66,77,84],['SCS',44,71,82,87,93],['MAST',31,49,59,71,78],['UDC',43,70,78,85,89],['FLC',57,79,89,92,97]
+];
+
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
+function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+function catBadge(cat) {
+    const cls = {Indice:'badge-purple',Producao:'badge-green',Longevidade:'badge-green',Saude:'badge-red',Reproducao:'badge-orange',Eficiencia:'badge-blue',Tipo:'badge-blue'}[cat]||'badge-blue';
+    return `<span class="badge ${cls}">${cat}</span>`;
+}
+
+function colorVal(v, good, bad) {
+    if (v >= good) return `<span style="color:#51cf66;font-weight:600">${v.toFixed(3)}</span>`;
+    if (v >= bad) return `<span style="color:#ffa94d">${v.toFixed(3)}</span>`;
+    return `<span style="color:#ff6b6b">${v.toFixed(3)}</span>`;
+}
+function colorPct(v, good, bad) {
+    if (v >= good) return `<span style="color:#51cf66;font-weight:600">${v.toFixed(1)}%</span>`;
+    if (v >= bad) return `<span style="color:#ffa94d">${v.toFixed(1)}%</span>`;
+    return `<span style="color:#ff6b6b">${v.toFixed(1)}%</span>`;
+}
+
+// V11 table
+const v11t = document.getElementById('v11-tbody');
+V11.forEach(([t,tp,win,hyb,r2,par2,nf]) => {
+    const cat = CATS[t]||'-';
+    const hybBadge = hyb !== 'none' ? '<span class="badge badge-orange">Hybrid</span>' : '';
+    const tpBadge = tp === 'stack' ? '<span class="badge badge-blue">STACK</span>' : '<span class="badge badge-green">SINGLE</span>';
+    v11t.innerHTML += `<tr><td><strong>${t}</strong></td><td>${tpBadge}</td><td>${win}</td><td>${hybBadge}</td><td>${r2.toFixed(3)}</td><td>${par2.toFixed(3)}</td><td>${nf}</td><td>${catBadge(cat)}</td></tr>`;
+});
+
+// V10 table
+const v10t = document.getElementById('v10-tbody');
+V10.forEach(([t,tp,win,r2,nf]) => {
+    const tpBadge = tp === 'stack' ? '<span class="badge badge-blue">STACK</span>' : '<span class="badge badge-green">SINGLE</span>';
+    v10t.innerHTML += `<tr><td><strong>${t}</strong></td><td>${tpBadge}</td><td>${win}</td><td>${r2.toFixed(3)}</td><td>${nf}</td></tr>`;
+});
+
+// V12 table
+const v12t = document.getElementById('v12-tbody');
+V12.forEach(([t,bases,r2,par2,nf,c0,c1,c2,d1,d2,ve]) => {
+    v12t.innerHTML += `<tr><td><strong>${t}</strong></td><td>${bases}</td><td>${r2.toFixed(3)}</td><td>${par2.toFixed(3)}</td><td>${nf}</td><td>${c0.toFixed(3)}</td><td>${c1.toFixed(3)}</td><td>${c2.toFixed(3)}</td><td>${d1.toFixed(3)}</td><td>${d2.toFixed(3)}</td><td>${ve.toFixed(3)}</td></tr>`;
+});
+
+// V12 cal table (reuse)
+const calT = document.getElementById('cal-tbody');
+V12.forEach(([t,bases,r2,par2,nf,c0,c1,c2,d1,d2,ve]) => {
+    calT.innerHTML += `<tr><td><strong>${t}</strong></td><td>${c0.toFixed(3)}</td><td>${c1.toFixed(3)}</td><td>${c2.toFixed(3)}</td><td>-</td><td>${d1.toFixed(3)}</td><td>${d2.toFixed(3)}</td><td>${ve.toFixed(3)}</td></tr>`;
+});
+
+// Comparison table
+const compT = document.getElementById('comp-tbody');
+ETHAN.forEach(([t,n,vers]) => {
+    let row = `<td><strong>${t}</strong></td><td>${n}</td>`;
+    ['PA','V10','V11','V12'].forEach(v => {
+        const d = vers[v];
+        if (d) {
+            const isWinner = v === 'V11';
+            const cls = isWinner ? ' class="winner"' : '';
+            row += `<td${cls}>${d.rho.toFixed(3)}</td><td>${d.mae.toFixed(1)}</td><td>${d.rmse.toFixed(1)}</td><td>${d.bias.toFixed(1)}</td>`;
+        } else {
+            row += '<td>-</td><td>-</td><td>-</td><td>-</td>';
+        }
+    });
+    compT.innerHTML += `<tr>${row}</tr>`;
+});
+
+// Ethan location table
+const ethanLoc = document.getElementById('ethan-loc-tbody');
+// exact match data [trait, N, rho, q25, q20, d10, v5]
+const ETHAN_LOC = [
+['TPI',3198,0.944,74.5,66.5,43.6,24.9],['MILK',4156,0.750,51.7,44.7,25.3,13.9],['FAT',4156,0.912,68.3,59.3,36.9,20.2],['FAT%',4156,0.797,54.5,47.7,28.5,15.6],['PRO',4156,0.885,63.9,55.5,33.2,19.0],['PRO%',4156,0.772,52.0,44.0,24.7,13.0],['PL',4156,0.801,55.4,49.3,29.1,16.4],['DPR',4156,0.686,48.9,40.7,24.1,13.8],['CCR',4156,0.670,47.4,41.0,23.1,12.6],['LIV',4156,0.721,49.9,43.2,24.3,14.1],['SCS',4156,0.760,53.5,45.5,26.5,14.2],['MAST',4156,0.749,52.0,44.6,26.2,14.8],['UDC',3198,0.754,52.2,43.8,24.8,14.0],['FLC',3198,0.805,56.8,48.4,29.9,17.0]
+];
+ETHAN_LOC.forEach(([t,n,rho,q,qi,d,v]) => {
+    ethanLoc.innerHTML += `<tr><td><strong>${t}</strong></td><td>${n}</td><td>${colorVal(rho,0.80,0.70)}</td><td>${colorPct(q,50,30)}</td><td>${colorPct(qi,40,25)}</td><td>${colorPct(d,25,15)}</td><td>${colorPct(v,15,10)}</td><td>25%</td><td>5%</td></tr>`;
+});
+
+// Granularity table
+const granT = document.getElementById('gran-tbody');
+GRAN.forEach(([t,h2,rho,q25,q20,d10,v5]) => {
+    granT.innerHTML += `<tr><td><strong>${t}</strong></td><td>${h2}</td><td>${colorVal(rho,0.80,0.70)}</td><td>${colorPct(q25,50,35)}</td><td>${colorPct(q20,50,35)}</td><td>${colorPct(d10,50,35)}</td><td>${colorPct(v5,50,35)}</td><td>Vigintil 5%</td></tr>`;
+});
+
+// Recall table
+const recT = document.getElementById('recall-tbody');
+RECALL.forEach(([t,t5,r10,r15,r20,r25]) => {
+    recT.innerHTML += `<tr><td><strong>${t}</strong></td><td>${colorPct(t5,50,35)}</td><td>${colorPct(r10,75,60)}</td><td>${colorPct(r15,80,70)}</td><td>${colorPct(r20,85,75)}</td><td>${colorPct(r25,90,80)}</td></tr>`;
+});
+
+// Correlations table
+const corrTbody = document.getElementById('corr-tbody');
+CORRELATIONS.forEach(([t1,t2,c]) => {
+    const color = c > 0 ? '#51cf66' : '#ff6b6b';
+    const strength = Math.abs(c) >= 0.6 ? '<span class="badge badge-green">Forte</span>' : Math.abs(c) >= 0.3 ? '<span class="badge badge-orange">Moderada</span>' : '<span class="badge badge-blue">Fraca</span>';
+    corrTbody.innerHTML += `<tr><td>${t1}</td><td>${t2}</td><td style="color:${color};font-weight:600">${c > 0 ? '+' : ''}${c.toFixed(2)}</td><td>${strength}</td></tr>`;
+});
+
+// SD/h2 table
+const sdTbody = document.getElementById('sd-tbody');
+Object.keys(GENETIC_SD).forEach(t => {
+    sdTbody.innerHTML += `<tr><td><strong>${t}</strong></td><td>${GENETIC_SD[t]}</td><td>${H2[t] || '-'}</td><td>${catBadge(CATS[t]||'-')}</td></tr>`;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Models (too large for GitHub)
+*_models.pkl
+*_lineage_models.pkl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Catboost
+catboost_info/
+
+# Temp files
+~$*
+_genoma_temp.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large data (kept locally)
+*.pdf

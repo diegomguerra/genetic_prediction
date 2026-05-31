@@ -1,0 +1,53 @@
+====================================================================================================
+RELATÓRIO DE PREDIÇÃO GENÔMICA — RAÇA HOLANDESA
+Data: 2026-04-23 12:06
+Total de combinações: 9
+====================================================================================================
+
+Rank | Touro                | Vaca                 |  NM$ Pred |  NM$ Corr | F(%) Cria | Dep.Endo$ | P(>Méd) | P(Top25) | Compl. |  Score
+-----------------------------------------------------------------------------------------------------------------------------------------
+   1 | S-S-I FLAGSHIP-ET    | SITIO ESTRELA FORTUN | $     618 | $     433 |     7.72% | $     185 |  100.0% |    99.2% |  34.2 |  82.5
+   2 | PEAK ALTAZENITH-ET   | SITIO ESTRELA FORTUN | $     517 | $     329 |     7.85% | $     188 |   99.6% |    94.3% |  33.6 |  77.8
+   3 | S-S-I FLAGSHIP-ET    | FAZENDA BOA VISTA TU | $     488 | $     305 |     7.65% | $     183 |   99.2% |    91.2% |  28.2 |  75.6
+   4 | DENOVO RESOLVER-ET   | SITIO ESTRELA FORTUN | $     425 | $     234 |     7.95% | $     190 |   97.2% |    79.2% |  32.7 |  71.4
+   5 | S-S-I FLAGSHIP-ET    | GRANJA SOL MARGARIDA | $     426 | $     244 |     7.59% | $     182 |   97.3% |    80.7% |  26.0 |  71.2
+   6 | PEAK ALTAZENITH-ET   | FAZENDA BOA VISTA TU | $     388 | $     201 |     7.78% | $     186 |   94.7% |    70.3% |  27.8 |  68.3
+   7 | PEAK ALTAZENITH-ET   | GRANJA SOL MARGARIDA | $     325 | $     141 |     7.72% | $     185 |   86.9% |    51.8% |  25.6 |  63.1
+   8 | DENOVO RESOLVER-ET   | FAZENDA BOA VISTA TU | $     295 | $     107 |     7.88% | $     189 |   80.5% |    41.0% |  27.2 |  60.3
+   9 | DENOVO RESOLVER-ET   | GRANJA SOL MARGARIDA | $     233 | $      46 |     7.82% | $     187 |   64.4% |    23.8% |  25.1 |  53.9
+
+====================================================================================================
+
+>>> MELHOR ACASALAMENTO: S-S-I FLAGSHIP-ET × SITIO ESTRELA FORTUNA
+    Score Final: 82.5/100
+    NM$ Predito (corrigido): $433
+    Endogamia Esperada: 7.72%
+    Depressão Endogâmica: $185
+
+    Predição por Trait (com IC 95%):
+    Trait                     |  PTA Pred | IC Inferior | IC Superior | Unidade   
+    --------------------------------------------------------------------------------
+    Produção de leite 305d    |    863.99 |     -831.25 |     2559.23 | lbs       
+    Produção de gordura 305d  |     86.11 |       21.39 |      150.84 | lbs       
+    Produção de proteína 305d |     42.28 |       -3.96 |       88.51 | lbs       
+    Escore de células somáticas |      2.78 |        2.49 |        3.06 | score     
+    Vida produtiva            |      4.64 |        1.92 |        7.37 | months    
+    Livabilidade da vaca      |      3.33 |        1.33 |        5.32 | %         
+    Livabilidade da novilha   |      1.36 |        0.01 |        2.72 | %         
+    Taxa de prenhez das filhas |      0.65 |       -1.48 |        2.77 | %         
+    Taxa de concepção da vaca |      1.76 |       -0.73 |        4.25 | %         
+    Taxa de concepção da novilha |      0.87 |       -1.50 |        3.24 | %         
+    Precocidade ao primeiro parto |      3.75 |       -4.56 |       12.06 | days      
+    Consumo alimentar residual |     -0.90 |       -1.92 |        0.12 | lbs/day   
+    Composição de peso corporal |     -0.55 |       -2.13 |        1.03 | score     
+    Composto de úbere         |      1.68 |        0.43 |        2.92 | score     
+    Composto de pernas e pés  |      1.55 |        0.43 |        2.67 | score     
+    Habilidade de parto       |      6.00 |      -18.92 |       30.92 | $         
+    Índice de saúde           |    165.00 |      148.07 |      181.93 | $         
+
+====================================================================================================
+Metodologia: ssGBLUP-derived PA + REL-weighted variance + 
+             Inbreeding depression (CDCB/EFI) + NM$ 2025 + 
+             Mendelian Sampling Variance + Risk Analysis
+Referências: VanRaden(2008), Aguilar/Misztal(2010), Cole/VanRaden(2025)
+====================================================================================================
