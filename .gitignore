@@ -20,3 +20,7 @@ Thumbs.db
 
 # Large data (kept locally)
 *.pdf
+
+# Bull caches (generated locally)
+_bulls_cache.pkl
+_cdcb_cache.pkl

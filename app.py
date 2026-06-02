@@ -39,9 +39,11 @@ from dsii_production_predict import (
 # ============================================================
 # CACHED LOADING
 # ============================================================
-@st.cache_resource(show_spinner=False)
-def load_databases():
-    """Carrega bases de touros e modelos V11 uma unica vez."""
+BULL_CACHE = BASE / '_bulls_cache.pkl'
+CDCB_CACHE = BASE / '_cdcb_cache.pkl'
+
+def _build_bull_cache():
+    """Constroi cache pickle dos dicts de touros (executa uma vez)."""
     bulls = {}
     bulls_by_name = {}
     with open(BULLS_CSV, 'r', encoding='utf-8-sig') as f:
@@ -77,6 +79,28 @@ def load_databases():
     for naab, row in cdcb_bulls.items():
         m = re.match(r'^(\d+)(HO|BS)(\d+)$', naab)
         if m: cdcb_by_num.setdefault(m.group(3), []).append((naab, row))
+
+    # Salva caches em pickle para carregamento rapido
+    with open(BULL_CACHE, 'wb') as f:
+        pickle.dump({'bulls': bulls, 'bulls_by_num': bulls_by_num}, f, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(CDCB_CACHE, 'wb') as f:
+        pickle.dump({'cdcb_bulls': cdcb_bulls, 'cdcb_to_ss': cdcb_to_ss, 'cdcb_by_num': cdcb_by_num}, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return bulls, cdcb_bulls, cdcb_to_ss, bulls_by_num, cdcb_by_num
+
+@st.cache_resource(show_spinner=False)
+def load_databases():
+    """Carrega bases de touros e modelos V11 uma unica vez."""
+    # Touros - usa cache pickle se disponivel
+    if BULL_CACHE.exists() and CDCB_CACHE.exists():
+        with open(BULL_CACHE, 'rb') as f:
+            bc = pickle.load(f)
+        bulls, bulls_by_num = bc['bulls'], bc['bulls_by_num']
+        with open(CDCB_CACHE, 'rb') as f:
+            cc = pickle.load(f)
+        cdcb_bulls, cdcb_to_ss, cdcb_by_num = cc['cdcb_bulls'], cc['cdcb_to_ss'], cc['cdcb_by_num']
+    else:
+        bulls, cdcb_bulls, cdcb_to_ss, bulls_by_num, cdcb_by_num = _build_bull_cache()
 
     with open(V11_DIR / 'v11_models.pkl', 'rb') as f: saved_models = pickle.load(f)
     with open(V11_DIR / 'v11_sire_profiles.pkl', 'rb') as f: sire_profiles = pickle.load(f)
@@ -383,8 +407,9 @@ def main():
     """, unsafe_allow_html=True)
 
     # Load databases (cached)
-    with st.spinner("Carregando bases de touros e modelos V11..."):
+    with st.status("Carregando bases de touros e modelos V11...", expanded=False) as status:
         db = load_databases()
+        status.update(label=f"Bases carregadas — {len(db['bulls']):,} touros", state="complete", expanded=False)
 
     n_bulls = len(db['bulls'])
     n_cdcb = len(db['cdcb_bulls'])
