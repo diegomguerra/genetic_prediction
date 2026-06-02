@@ -1,12 +1,13 @@
 """
 DSII Genetic Predictor — Streamlit Web App
 Roda a predição V11 completa via browser.
+Touros servidos via Supabase (SelectSires Platform).
 """
 import warnings; warnings.filterwarnings('ignore')
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle, csv, re, time, io
+import pickle, csv, re, time, io, json, urllib.request, urllib.error, urllib.parse
 from pathlib import Path
 from scipy.stats import rankdata
 
@@ -14,9 +15,11 @@ from scipy.stats import rankdata
 # CONFIG
 # ============================================================
 BASE = Path(__file__).parent
-BULLS_CSV = Path("C:/Users/DiegoGuerra/gen-genie-advisor/sms-engine/data/bulls.csv")
-DOWNLOADS = Path("C:/Users/DiegoGuerra/Downloads")
 V11_DIR = BASE / 'dsii_v11_results'
+
+# Supabase SelectSires Platform
+SUPABASE_URL = "https://odactdxpecpiyiyaqfgi.supabase.co/rest/v1"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kYWN0ZHhwZWNwaXlpeWFxZmdpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzMyNDgxNiwiZXhwIjoyMDg4OTAwODE2fQ.Pvxdh4tZrOxbqIGbsIWmkQtBr7ei3NCFNgHmX3rZN6E"
 
 st.set_page_config(
     page_title="DSII Genetic Predictor",
@@ -37,39 +40,127 @@ from dsii_production_predict import (
 )
 
 # ============================================================
-# CACHED LOADING
+# SUPABASE BULL FETCHER
 # ============================================================
-BULL_CACHE = BASE / '_bulls_cache.pkl'
-CDCB_CACHE = BASE / '_cdcb_cache.pkl'
+# DB col -> original CSV col mapping (SS)
+_DB_TO_SS = {
+    'naab':'NAAB','name':'Name','registration_name':'Registration Name',
+    'tpi':'TPI','nm_dollar':'NM$','cm_dollar':'CM$','ptam':'PTAM','cfp':'CFP',
+    'ptaf':'PTAF','ptaf_pct':'PTAF%','ptap':'PTAP','ptap_pct':'PTAP%',
+    'pl':'PL','dpr':'DPR','liv':'LIV','scs':'SCS','mast':'MAST','ptat':'PTAT',
+    'udc':'UDC','flc':'FLC','sce':'SCE','dce':'DCE','ssb':'SSB','dsb':'DSB',
+    'sta':'STA','str':'STR','dfm':'DFM','rua':'RUA','rls':'RLS','rtp':'RTP',
+    'ftl':'FTL','ccr':'CCR','hcr':'HCR','bwc':'BWC','bod':'BOD','rw':'RW',
+    'rlr':'RLR','fta':'FTA','fls':'FLS','fua':'FUA','ruh':'RUH','ruw':'RUW',
+    'ucl':'UCL','udp':'UDP','ftp':'FTP','met':'MET','rp':'RP','da':'DA',
+    'ket':'KET','mf':'MF','gfi':'GFI','rfi':'RFI','efc':'EFC',
+    'h_liv':'H LIV','fi':'FI','gl':'GL','f_sav':'F SAV',
+}
+_DB_TO_CDCB = {
+    'naab_code':'NAAB_CODE','name':'NAME',
+    'nm_dollar_pta':'NM$_PTA','cm_dollar_pta':'CM$_PTA',
+    'mlk_pta':'MLK_PTA','fat_pta':'FAT_PTA','fat_pct':'FAT%',
+    'pro_pta':'PRO_PTA','pro_pct':'PRO%','pl_pta':'PL_PTA',
+    'scs_pta':'SCS_PTA','dpr_pta':'DPR_PTA','hcr_pta':'HCR_PTA',
+    'ccr_pta':'CCR_PTA','liv_pta':'LIV_PTA','gl_pta':'GL_PTA',
+    'rfi_pta':'RFI_PTA','mfv_pta':'MFV_PTA','dab_pta':'DAB_PTA',
+    'ket_pta':'KET_PTA','mas_pta':'MAS_PTA','met_pta':'MET_PTA',
+    'rpl_pta':'RPL_PTA','efc_pta':'EFC_PTA','hlv_pta':'HLV_PTA',
+    'fs_pta':'FS_PTA','typ_pta':'TYP_PTA','udc_pta':'UDC_PTA','flc_pta':'FLC_PTA',
+}
 
-def _build_bull_cache():
-    """Constroi cache pickle dos dicts de touros (executa uma vez)."""
+def _supabase_get(table, params):
+    """Faz GET no Supabase REST API."""
+    url = f"{SUPABASE_URL}/{table}?{params}"
+    req = urllib.request.Request(url)
+    req.add_header('apikey', SUPABASE_KEY)
+    req.add_header('Authorization', f'Bearer {SUPABASE_KEY}')
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+        return json.loads(resp.read())
+    except Exception as e:
+        return []
+
+def _row_to_ss(db_row):
+    """Converte row do Supabase para formato esperado pelo get_bull_ptas."""
+    return {csv_col: (str(db_row[db_col]) if db_row.get(db_col) is not None else '')
+            for db_col, csv_col in _DB_TO_SS.items()}
+
+def _row_to_cdcb(db_row):
+    return {csv_col: (str(db_row[db_col]) if db_row.get(db_col) is not None else '')
+            for db_col, csv_col in _DB_TO_CDCB.items()}
+
+def fetch_bulls_for_naabs(raw_naabs):
+    """Busca touros do Supabase apenas para os NAABs necessarios."""
+    # Collect all NAAB variations and numeric suffixes
+    all_naabs = set()
+    all_nums = set()
+    for raw in raw_naabs:
+        candidates = normalize_naab(raw)
+        all_naabs.update(candidates)
+        m = re.match(r'^(\d+)(HO|BS|H|B)0*(\d+)$', str(raw).strip())
+        if m:
+            all_nums.add(m.group(3))
+
+    # Query SS bulls by exact NAAB match (batch in chunks of 200)
+    naab_list = list(all_naabs)
+    ss_rows = []
+    for i in range(0, len(naab_list), 200):
+        chunk = naab_list[i:i+200]
+        filter_val = ','.join(chunk)
+        rows = _supabase_get('bulls_ss', f'naab=in.({urllib.parse.quote(filter_val)})&limit=10000')
+        ss_rows.extend(rows)
+
+    # Numeric suffix fallback: batch with OR filter (max 20 per request)
+    num_list = list(all_nums)
+    for i in range(0, len(num_list), 20):
+        chunk = num_list[i:i+20]
+        or_parts = ','.join(f'naab.like.*{num}' for num in chunk)
+        rows = _supabase_get('bulls_ss', f'or=({urllib.parse.quote(or_parts)})&limit=5000')
+        ss_rows.extend(rows)
+
+    # Build bulls dict
     bulls = {}
     bulls_by_name = {}
-    with open(BULLS_CSV, 'r', encoding='utf-8-sig') as f:
-        for row in csv.DictReader(f):
-            row = _normalize_bull_row(row)
-            naab = row.get('NAAB','').strip()
-            if naab:
-                bulls[naab] = row
-                reg_name = row.get('Registration Name','').strip().upper()
-                if reg_name: bulls_by_name[reg_name] = (naab, row)
-                name = row.get('Name','').strip().upper()
-                if name: bulls_by_name[name] = (naab, row)
+    seen_naabs = set()
+    for r in ss_rows:
+        naab = r.get('naab','')
+        if not naab or naab in seen_naabs: continue
+        seen_naabs.add(naab)
+        row = _row_to_ss(r)
+        bulls[naab] = row
+        name = (r.get('name') or '').strip().upper()
+        if name: bulls_by_name[name] = (naab, row)
+        regname = (r.get('registration_name') or '').strip().upper()
+        if regname: bulls_by_name[regname] = (naab, row)
+
+    # Query CDCB bulls (same approach)
+    cdcb_rows = []
+    for i in range(0, len(naab_list), 200):
+        chunk = naab_list[i:i+200]
+        filter_val = ','.join(chunk)
+        rows = _supabase_get('bulls_cdcb', f'naab_code=in.({urllib.parse.quote(filter_val)})&limit=10000')
+        cdcb_rows.extend(rows)
+    for i in range(0, len(num_list), 20):
+        chunk = num_list[i:i+20]
+        or_parts = ','.join(f'naab_code.like.*{num}' for num in chunk)
+        rows = _supabase_get('bulls_cdcb', f'or=({urllib.parse.quote(or_parts)})&limit=5000')
+        cdcb_rows.extend(rows)
 
     cdcb_bulls = {}
     cdcb_to_ss = {}
-    cdcb_path = DOWNLOADS / 'Bull_Report (1).csv'
-    if cdcb_path.exists():
-        with open(cdcb_path, 'r', encoding='latin-1') as f:
-            for row in csv.DictReader(f):
-                naab = row.get('NAAB_CODE','').strip()
-                if naab:
-                    cdcb_bulls[naab] = row
-                    name = row.get('NAME','').strip().upper()
-                    if name and name in bulls_by_name:
-                        cdcb_to_ss[naab] = bulls_by_name[name][0]
+    seen_cdcb = set()
+    for r in cdcb_rows:
+        naab = r.get('naab_code','')
+        if not naab or naab in seen_cdcb: continue
+        seen_cdcb.add(naab)
+        row = _row_to_cdcb(r)
+        cdcb_bulls[naab] = row
+        name = (r.get('name') or '').strip().upper()
+        if name and name in bulls_by_name:
+            cdcb_to_ss[naab] = bulls_by_name[name][0]
 
+    # Build numeric indexes
     bulls_by_num = {}
     for naab, row in bulls.items():
         m = re.match(r'^(\d+)(HO|BS)(\d+)$', naab)
@@ -80,52 +171,24 @@ def _build_bull_cache():
         m = re.match(r'^(\d+)(HO|BS)(\d+)$', naab)
         if m: cdcb_by_num.setdefault(m.group(3), []).append((naab, row))
 
-    # Salva caches em pickle para carregamento rapido
-    with open(BULL_CACHE, 'wb') as f:
-        pickle.dump({'bulls': bulls, 'bulls_by_num': bulls_by_num}, f, protocol=pickle.HIGHEST_PROTOCOL)
-    with open(CDCB_CACHE, 'wb') as f:
-        pickle.dump({'cdcb_bulls': cdcb_bulls, 'cdcb_to_ss': cdcb_to_ss, 'cdcb_by_num': cdcb_by_num}, f, protocol=pickle.HIGHEST_PROTOCOL)
-
     return bulls, cdcb_bulls, cdcb_to_ss, bulls_by_num, cdcb_by_num
 
+# ============================================================
+# CACHED MODEL LOADING (only ML models, not bull data)
+# ============================================================
 @st.cache_resource(show_spinner=False)
-def load_databases():
-    """Carrega bases de touros e modelos V11 uma unica vez."""
-    # Touros - usa cache pickle se disponivel
-    if BULL_CACHE.exists() and CDCB_CACHE.exists():
-        with open(BULL_CACHE, 'rb') as f:
-            bc = pickle.load(f)
-        bulls, bulls_by_num = bc['bulls'], bc['bulls_by_num']
-        with open(CDCB_CACHE, 'rb') as f:
-            cc = pickle.load(f)
-        cdcb_bulls, cdcb_to_ss, cdcb_by_num = cc['cdcb_bulls'], cc['cdcb_to_ss'], cc['cdcb_by_num']
-    else:
-        bulls, cdcb_bulls, cdcb_to_ss, bulls_by_num, cdcb_by_num = _build_bull_cache()
-
+def load_models():
+    """Carrega modelos V11 uma unica vez (sem dados de touros)."""
     with open(V11_DIR / 'v11_models.pkl', 'rb') as f: saved_models = pickle.load(f)
     with open(V11_DIR / 'v11_sire_profiles.pkl', 'rb') as f: sire_profiles = pickle.load(f)
     with open(V11_DIR / 'v11_mgs_profiles.pkl', 'rb') as f: mgs_profiles = pickle.load(f)
-
-    return {
-        'bulls': bulls, 'cdcb_bulls': cdcb_bulls, 'cdcb_to_ss': cdcb_to_ss,
-        'bulls_by_num': bulls_by_num, 'cdcb_by_num': cdcb_by_num,
-        'saved_models': saved_models, 'sire_profiles': sire_profiles,
-        'mgs_profiles': mgs_profiles,
-    }
+    return saved_models, sire_profiles, mgs_profiles
 
 # ============================================================
 # PREDICTION PIPELINE
 # ============================================================
-def run_prediction(df, header_row, db, progress_cb=None):
+def run_prediction(df, header_row, saved_models, sire_profiles, mgs_profiles, progress_cb=None):
     """Executa a predição completa e retorna resultados."""
-    bulls = db['bulls']
-    cdcb_bulls = db['cdcb_bulls']
-    cdcb_to_ss = db['cdcb_to_ss']
-    bulls_by_num = db['bulls_by_num']
-    cdcb_by_num = db['cdcb_by_num']
-    saved_models = db['saved_models']
-    sire_profiles = db['sire_profiles']
-    mgs_profiles = db['mgs_profiles']
 
     ALL_TRAITS = list(saved_models.keys())
 
@@ -169,6 +232,19 @@ def run_prediction(df, header_row, db, progress_cb=None):
 
     if pai_col is None:
         return None, None, None, [], "Coluna do pai (NAAB) não encontrada. Verifique o arquivo."
+
+    # Collect all NAAB codes from the file and fetch from Supabase
+    if progress_cb: progress_cb(0.02, "Buscando touros no banco de dados...")
+    raw_naabs = set()
+    for _, row in df.iterrows():
+        raw_naabs.add(str(row[pai_col]).strip())
+        if avo_col: raw_naabs.add(str(row[avo_col]).strip())
+        if bis_col: raw_naabs.add(str(row[bis_col]).strip())
+    raw_naabs.discard('nan')
+    raw_naabs.discard('')
+    raw_naabs.discard('None')
+
+    bulls, cdcb_bulls, cdcb_to_ss, bulls_by_num, cdcb_by_num = fetch_bulls_for_naabs(raw_naabs)
 
     # Resolve pedigrees
     if progress_cb: progress_cb(0.05, "Resolvendo pedigrees...")
@@ -406,14 +482,11 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-    # Load databases (cached)
-    with st.status("Carregando bases de touros e modelos V11...", expanded=False) as status:
-        db = load_databases()
-        status.update(label=f"Bases carregadas — {len(db['bulls']):,} touros", state="complete", expanded=False)
-
-    n_bulls = len(db['bulls'])
-    n_cdcb = len(db['cdcb_bulls'])
-    n_traits = len(db['saved_models'])
+    # Load ML models (cached, no bull data)
+    with st.status("Carregando modelos ML...", expanded=False) as status:
+        saved_models, sire_profiles, mgs_profiles = load_models()
+        n_traits = len(saved_models)
+        status.update(label=f"Modelos carregados — {n_traits} traits", state="complete", expanded=False)
 
     # Upload section
     col_up, col_cfg = st.columns([2, 1])
@@ -474,7 +547,7 @@ def main():
         def update_progress(pct, msg):
             progress.progress(pct, text=msg)
 
-        result = run_prediction(df, header_row, db, progress_cb=update_progress)
+        result = run_prediction(df, header_row, saved_models, sire_profiles, mgs_profiles, progress_cb=update_progress)
 
         if result[0] is None:
             st.error(f"Erro: {result[4]}")
