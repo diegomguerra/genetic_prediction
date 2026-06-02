@@ -19,7 +19,8 @@ V11_DIR = BASE / 'dsii_v11_results'
 
 # Supabase SelectSires Platform
 SUPABASE_URL = "https://odactdxpecpiyiyaqfgi.supabase.co/rest/v1"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kYWN0ZHhwZWNwaXlpeWFxZmdpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzMyNDgxNiwiZXhwIjoyMDg4OTAwODE2fQ.Pvxdh4tZrOxbqIGbsIWmkQtBr7ei3NCFNgHmX3rZN6E"
+import os as _os
+SUPABASE_KEY = _os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kYWN0ZHhwZWNwaXlpeWFxZmdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMjQ4MTYsImV4cCI6MjA4ODkwMDgxNn0.1Ybzv5-oqg1yHu2W1vBRDHN23tj0YzN_AbwBJyKcrpY")
 
 st.set_page_config(
     page_title="DSII Genetic Predictor",
