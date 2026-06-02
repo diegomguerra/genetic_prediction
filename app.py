@@ -654,6 +654,7 @@ def main():
         st.session_state['elapsed'] = elapsed
         st.session_state['client_name'] = client_name or uploaded.name.replace('.xlsx','').replace('.csv','')
         st.session_state['n_animals'] = len(res_df)
+        st.rerun()
 
     # Show results
     if 'res_df' not in st.session_state:
