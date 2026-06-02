@@ -613,12 +613,52 @@ def main():
         st.error(f"Erro ao ler arquivo: {e}")
         st.stop()
 
+    # Detect columns (same logic as run_prediction) for preview
+    cols = list(df.columns)
+    col_lower = {c: c.lower().replace('_', '').replace('-', '').replace(' ', '') for c in cols}
+    _id_col = _pai_col = _avo_col = _bis_col = None
+    for c, cl in col_lower.items():
+        if cl in ('id', 'idfazenda', 'animal', 'nome', 'brinco', 'registro') and _id_col is None:
+            _id_col = c
+        elif cl in ('naabpai', 'pai', 'sire', 'naabsire', 'painaab', 'sirenaab') and _pai_col is None:
+            _pai_col = c
+        elif cl in ('naabavomaterno', 'avomaterno', 'mgs', 'naabmgs', 'avo', 'mgsnaab') and _avo_col is None:
+            _avo_col = c
+        elif cl in ('naabbisamaterno', 'bisamaterno', 'mmgs', 'naabmmgs', 'bisavo', 'mmgsnaab') and _bis_col is None:
+            _bis_col = c
+    if _pai_col is None:
+        naab_cols = []
+        for c in cols:
+            sample_vals = df[c].dropna().astype(str).head(10)
+            if sample_vals.str.contains(r'\d+HO\d+|\d+BS\d+', regex=True).any():
+                naab_cols.append(c)
+        if len(naab_cols) >= 1: _pai_col = naab_cols[0]
+        if len(naab_cols) >= 2: _avo_col = naab_cols[1]
+        if len(naab_cols) >= 3: _bis_col = naab_cols[2]
+    if _id_col is None:
+        for c in cols:
+            if c not in (_pai_col, _avo_col, _bis_col):
+                _id_col = c; break
+
+    mapping_parts = []
+    mapping_parts.append(f"<strong>ID:</strong> {_id_col or '?'}")
+    mapping_parts.append(f"<strong>Pai:</strong> {_pai_col or 'nao encontrado'}")
+    if _avo_col: mapping_parts.append(f"<strong>Avo Materno:</strong> {_avo_col}")
+    if _bis_col: mapping_parts.append(f"<strong>Bisavo:</strong> {_bis_col}")
+
     st.markdown(f"""
     <div class="info-box" style="border-left-color:#22c55e;">
         <div class="title" style="color:#22c55e;">Arquivo carregado</div>
-        <div class="text"><strong style="color:#e8e9ec;">{uploaded.name}</strong> &mdash; {len(df)} animais &nbsp;&bull;&nbsp; {len(df.columns)} colunas</div>
+        <div class="text">
+            <strong style="color:#e8e9ec;">{uploaded.name}</strong> &mdash; {len(df)} animais &nbsp;&bull;&nbsp; {len(df.columns)} colunas<br>
+            <span style="color:#9ca3af;">Colunas detectadas: {' &nbsp;&bull;&nbsp; '.join(mapping_parts)}</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
+
+    if _pai_col is None:
+        st.error("Coluna do Pai (NAAB) nao encontrada. Verifique os nomes das colunas.")
+        st.stop()
 
     with st.expander("Preview dos dados", expanded=False):
         st.dataframe(df.head(8), use_container_width=True)
