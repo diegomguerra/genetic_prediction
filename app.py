@@ -105,9 +105,46 @@ def run_prediction(df, header_row, db, progress_cb=None):
 
     ALL_TRAITS = list(saved_models.keys())
 
+    # Smart column detection by name patterns
     cols = list(df.columns)
-    id_col, pai_col, avo_col = cols[0], cols[1], cols[2]
-    bis_col = cols[3] if len(cols) > 3 else None
+    col_lower = {c: c.lower().replace('_', '').replace('-', '').replace(' ', '') for c in cols}
+
+    id_col = None
+    pai_col = None
+    avo_col = None
+    bis_col = None
+
+    for c, cl in col_lower.items():
+        if cl in ('id', 'idfazenda', 'animal', 'nome', 'brinco', 'registro') and id_col is None:
+            id_col = c
+        elif cl in ('naabpai', 'pai', 'sire', 'naabsire', 'painaab', 'sirenaab') and pai_col is None:
+            pai_col = c
+        elif cl in ('naabavomaterno', 'avomaterno', 'mgs', 'naabmgs', 'avo', 'mgsnaab') and avo_col is None:
+            avo_col = c
+        elif cl in ('naabbisamaterno', 'bisaMaterno', 'bisamaterno', 'mmgs', 'naabmmgs', 'bisavo', 'mmgsnaab') and bis_col is None:
+            bis_col = c
+
+    # Fallback: use positional if no match found
+    if pai_col is None:
+        # Find columns that look like NAAB codes (contain HO or BS patterns)
+        naab_cols = []
+        for c in cols:
+            sample_vals = df[c].dropna().astype(str).head(10)
+            if sample_vals.str.contains(r'\d+HO\d+|\d+BS\d+', regex=True).any():
+                naab_cols.append(c)
+        if len(naab_cols) >= 1: pai_col = naab_cols[0]
+        if len(naab_cols) >= 2: avo_col = naab_cols[1]
+        if len(naab_cols) >= 3: bis_col = naab_cols[2]
+
+    if id_col is None:
+        # Use first column that is NOT a NAAB column
+        for c in cols:
+            if c not in (pai_col, avo_col, bis_col):
+                id_col = c
+                break
+
+    if pai_col is None:
+        return None, None, None, [], "Coluna do pai (NAAB) não encontrada. Verifique o arquivo."
 
     # Resolve pedigrees
     if progress_cb: progress_cb(0.05, "Resolvendo pedigrees...")
@@ -358,9 +395,9 @@ def main():
 
     with col_up:
         uploaded = st.file_uploader(
-            "Upload da planilha de animais (.xlsx)",
-            type=['xlsx', 'xls'],
-            help="Colunas esperadas: ANIMAL, SIRE (NAAB), MGS (NAAB), MMGS (NAAB)"
+            "Upload da planilha de animais",
+            type=['xlsx', 'xls', 'csv'],
+            help="Colunas esperadas: ID, SIRE/PAI (NAAB), MGS/AVÔ (NAAB), MMGS/BISAVÔ (NAAB)"
         )
 
     with col_cfg:
@@ -385,7 +422,15 @@ def main():
 
     # Read uploaded file
     try:
-        df = pd.read_excel(uploaded, engine='openpyxl', header=header_row)
+        if uploaded.name.endswith('.csv'):
+            # Detect separator
+            uploaded.seek(0)
+            sample = uploaded.read(2048).decode('utf-8', errors='replace')
+            uploaded.seek(0)
+            sep = ';' if sample.count(';') > sample.count(',') else ','
+            df = pd.read_csv(uploaded, sep=sep, header=header_row, encoding='utf-8')
+        else:
+            df = pd.read_excel(uploaded, engine='openpyxl', header=header_row)
     except Exception as e:
         st.error(f"Erro ao ler arquivo: {e}")
         st.stop()
