@@ -99,8 +99,9 @@ tr:hover td { background: #1a1d2a; }
     <div class="kpi-row">
         <div class="kpi"><div class="label">Base de Touros</div><div class="value">258.203</div><div class="sub">bulls.csv (Select Sires)</div></div>
         <div class="kpi"><div class="label">Base CDCB</div><div class="value">92.512</div><div class="sub">Bull_Report (CDCB)</div></div>
-        <div class="kpi"><div class="label">Dados Treino</div><div class="value purple">7.608</div><div class="sub">filhas (3 fontes)</div></div>
+        <div class="kpi"><div class="label">Dados Treino</div><div class="value purple">7.739</div><div class="sub">filhas (3 fontes)</div></div>
         <div class="kpi"><div class="label">Validacao Externa</div><div class="value green">4.156</div><div class="sub">Ethan USA (genomica real)</div></div>
+        <div class="kpi"><div class="label">R2 Abs Medio</div><div class="value orange">0.55</div><div class="sub">PA+deviation (47 traits)</div></div>
     </div>
 
     <div class="card">
@@ -303,7 +304,7 @@ tr:hover td { background: #1a1d2a; }
     <div class="card">
         <table>
             <thead>
-                <tr><th>Trait</th><th>Tipo</th><th>Winner / Bases</th><th>Hybrid</th><th>R2 Dev</th><th>PA R2</th><th>N Features</th><th>Categoria</th></tr>
+                <tr><th>Trait</th><th>Tipo</th><th>Winner / Bases</th><th>Hybrid</th><th>R2 Dev</th><th>R2 Abs</th><th>PA R2</th><th>N Feat</th><th>N Treino</th><th>Tempo</th><th>Categoria</th></tr>
             </thead>
             <tbody id="v11-tbody"></tbody>
         </table>
@@ -669,6 +670,37 @@ tr:hover td { background: #1a1d2a; }
             </tbody>
         </table>
     </div>
+
+    <div class="card" style="border-color:#51cf66;">
+        <h3 style="color:#51cf66;">App Web (Streamlit)</h3>
+        <div class="formula">
+            # Rodar localmente:<br>
+            python -m streamlit run app.py --server.port 8501 --server.headless true<br><br>
+            # Acesso local: http://localhost:8501<br>
+            # Acesso rede:  http://&lt;IP&gt;:8501
+        </div>
+        <table>
+            <tr><th>Feature</th><th>Descricao</th></tr>
+            <tr><td>Upload</td><td>Aceita .xlsx com colunas: ANIMAL, SIRE(NAAB), MGS(NAAB), MMGS(NAAB)</td></tr>
+            <tr><td>Motor</td><td>V11 automatico — melhor modelo por trait (STACK/RF/GBR/XGB/LGBM/HGBR)</td></tr>
+            <tr><td>Grupos</td><td>Classificacao automatica (Elite 5%, Top 10%, Superior 20%, etc.) com recall validado</td></tr>
+            <tr><td>Output</td><td>Excel 3 abas (Predicoes + Grupos + Confianca) para download</td></tr>
+            <tr><td>Cache</td><td>Modelos carregados uma vez (243 MB), predicoes subsequentes em ~40s</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Distribuicao de Winners V11 (47 traits)</h3>
+        <div class="kpi-row">
+            <div class="kpi"><div class="label">STACK (Ridge top-3)</div><div class="value green">24</div><div class="sub">51% dos traits</div></div>
+            <div class="kpi"><div class="label">RF</div><div class="value">8</div><div class="sub">17% dos traits</div></div>
+            <div class="kpi"><div class="label">GBR</div><div class="value orange">6</div><div class="sub">13% dos traits</div></div>
+            <div class="kpi"><div class="label">XGB</div><div class="value">5</div><div class="sub">11% dos traits</div></div>
+            <div class="kpi"><div class="label">LGBM</div><div class="value">3</div><div class="sub">6% dos traits</div></div>
+            <div class="kpi"><div class="label">HGBR</div><div class="value red">1</div><div class="sub">2% dos traits</div></div>
+        </div>
+        <div class="note">STACK = Ridge meta-learner sobre os 3 melhores modelos base. Quando STACK nao vence, o melhor single model e usado diretamente.</div>
+    </div>
 </div>
 
 </div><!-- .main -->
@@ -682,9 +714,9 @@ const GENETIC_SD = {TPI:250,MILK:675,FAT:29,'FAT%':0.05,PRO:19,'PRO%':0.02,CFP:4
 const H2 = {TPI:0.30,MILK:0.25,FAT:0.25,'FAT%':0.50,PRO:0.25,'PRO%':0.50,CFP:0.25,PL:0.08,LIV:0.05,'H_LIV':0.05,SCS:0.12,MAST:0.04,MET:0.03,RP:0.02,DA:0.04,KET:0.04,MF:0.02,DPR:0.04,HCR:0.04,CCR:0.04,SCE:0.08,DCE:0.06,SSB:0.05,DSB:0.04,GL:0.40,EFC:0.06,FI:0.06,'F_SAV':0.15,RFI:0.15,GFI:0.15,PTAT:0.30,UDC:0.25,FLC:0.15,STA:0.42,STR:0.27,DFM:0.25,BOD:0.30,RUA:0.30,RW:0.25,RLS:0.15,RLR:0.10,FTA:0.10,FLS:0.10,FTL:0.10,FUA:0.25,RUH:0.20,RUW:0.20,UCL:0.15,UDP:0.30,FTP:0.25,RTP:0.20,BWC:0.20,'NM$':0.30,'CM$':0.30};
 const CORRELATIONS = [['MILK','DPR',-0.35],['MILK','CCR',-0.30],['MILK','SCS',0.10],['MILK','PL',-0.15],['FAT','PRO',0.65],['FAT','DPR',-0.25],['PRO','DPR',-0.30],['DPR','CCR',0.55],['DPR','PL',0.45],['SCS','PL',-0.30],['SCS','MAST',0.70],['PTAT','UDC',0.40],['PTAT','FLC',0.30],['MILK','FAT',0.55],['MILK','PRO',0.85],['PL','LIV',0.85],['DPR','FI',0.70],['HCR','CCR',0.60],['HCR','DPR',0.50],['SCE','DCE',0.60],['SSB','DSB',0.55],['MAST','MET',0.30],['MAST','DA',0.20],['KET','DA',0.35],['MET','RP',0.30],['STA','STR',0.25],['STA','BOD',0.40],['PTAT','STA',0.30],['UDC','FUA',0.70],['UDC','RUH',0.65],['UDC','UDP',0.60],['UDC','UCL',0.40],['FLC','FTA',0.50],['FLC','RLS',0.35],['FLC','RLR',0.40],['FLC','FLS',0.60],['PL','H_LIV',0.65],['LIV','H_LIV',0.70],['PL','MAST',-0.30],['CCR','PL',0.35],['HCR','PL',0.30]];
 
-// V11 models data: [trait, type, winner/bases, hybrid, r2dev, par2, nfeat]
+// V11 models data: [trait, type, winner/bases, hybrid, r2dev, par2, r2abs, nfeat, nTrain, timeSec]
 const V11 = [
-['TPI','single','LGBM','none',0.943,-13.790,100],['MILK','stack','RF+GBR+XGB','hybrid_3way',0.570,0.067,114],['FAT','single','RF','hybrid_3way',0.764,0.184,108],['FAT%','stack','RF+GBR+XGB','none',0.350,0.386,96],['PRO','stack','LGBM+GBR+RF','none',0.771,0.027,105],['PRO%','single','RF','none',0.265,0.395,96],['CFP','single','GBR','none',0.748,-0.657,101],['PL','single','GBR','hybrid_3way',0.702,-0.238,114],['LIV','stack','RF+GBR+XGB','hybrid_3way',0.355,0.325,99],['SCS','stack','GBR+XGB+HGBR','none',0.950,-55.667,105],['MAST','stack','RF+GBR+LGBM','hybrid_3way',0.292,0.305,108],['MET','single','GBR','hybrid_3way',0.998,-421.259,107],['RP','single','LGBM','hybrid_3way',0.998,-1659.482,104],['DA','single','LGBM','hybrid_3way',0.998,-1154.425,107],['KET','stack','HGBR+GBR+LGBM','hybrid_3way',0.998,-397.247,104],['MF','single','GBR','hybrid_3way',0.999,-26509.764,101],['DPR','stack','RF+GBR+XGB','none',0.380,0.181,114],['HCR','single','RF','hybrid_3way',0.409,-0.039,103],['CCR','stack','RF+GBR+LGBM','hybrid_3way',0.363,0.226,105],['SCE','single','XGB','none',0.688,-2.298,100],['DCE','single','XGB','hybrid_3way',0.744,-3.825,104],['SSB','single','XGB','none',0.879,-12.932,104],['DSB','stack','XGB+GBR+LGBM','none',0.822,-5.647,104],['FI','stack','GBR+XGB+LGBM','hybrid_3way',0.995,-11028.767,89],['GFI','stack','HGBR+GBR+LGBM','none',0.464,-41.934,84],['PTAT','stack','XGB+LGBM+HGBR','none',0.505,0.443,106],['UDC','single','GBR','none',0.600,-0.110,112],['FLC','single','XGB','none',0.311,0.497,112],['STA','stack','RF+XGB+GBR','none',0.425,0.211,109],['STR','stack','RF+GBR+XGB','none',0.500,-0.045,103],['DFM','stack','RF+GBR+HGBR','none',0.501,-0.214,101],['BOD','single','RF','none',0.632,-0.346,104],['RUA','stack','XGB+RF+GBR','none',0.407,-0.436,101],['RW','stack','RF+GBR+LGBM','none',0.409,0.427,100],['RLS','single','RF','none',0.393,-0.068,104],['RLR','single','XGB','none',0.563,0.090,104],['FTA','stack','RF+LGBM+XGB','none',0.596,-0.163,104],['FLS','single','HGBR','none',0.543,0.118,104],['FUA','single','GBR','none',0.633,-0.393,104],['RUH','stack','GBR+XGB+RF','none',0.662,-0.650,104],['RUW','single','XGB','none',0.648,-0.524,101],['UCL','stack','RF+GBR+LGBM','none',0.372,0.260,103],['UDP','stack','RF+XGB+LGBM','none',0.371,0.159,103],['FTP','single','RF','none',0.488,-0.273,101],['RTP','single','RF','none',0.466,-0.117,101],['NM$','stack','GBR+LGBM+HGBR','none',0.866,-0.754,109],['CM$','single','GBR','none',0.863,-0.758,104]
+['TPI','single','LGBM','none',0.943,-13.790,0.860,100,6781,53.7],['MILK','stack','RF+GBR+XGB','hybrid_3way',0.570,0.067,0.659,114,7739,96.7],['FAT','single','RF','hybrid_3way',0.764,0.184,0.851,108,7739,85.8],['FAT%','stack','RF+GBR+XGB','none',0.350,0.386,0.628,96,7739,98.1],['PRO','stack','LGBM+GBR+RF','none',0.771,0.027,0.825,105,7739,101.2],['PRO%','single','RF','none',0.265,0.395,0.564,96,7739,89.2],['CFP','single','GBR','none',0.748,-0.657,0.767,101,3583,42.6],['PL','single','GBR','hybrid_3way',0.702,-0.238,0.724,114,7739,91.9],['LIV','stack','RF+GBR+XGB','hybrid_3way',0.355,0.325,0.577,99,7739,94.7],['SCS','stack','GBR+XGB+HGBR','none',0.950,-55.667,0.542,105,7739,87.9],['MAST','stack','RF+GBR+LGBM','hybrid_3way',0.292,0.305,0.531,108,7739,98.9],['MET','single','GBR','hybrid_3way',0.998,-421.259,0.351,107,1611,18.3],['RP','single','LGBM','hybrid_3way',0.998,-1659.482,-2.259,104,1611,13.1],['DA','single','LGBM','hybrid_3way',0.998,-1154.425,-0.762,107,1611,14.0],['KET','stack','HGBR+GBR+LGBM','hybrid_3way',0.998,-397.247,0.246,104,1611,18.7],['MF','single','GBR','hybrid_3way',0.999,-26509.764,-14.698,101,1611,17.3],['DPR','stack','RF+GBR+XGB','none',0.380,0.181,0.514,114,7739,112.7],['HCR','single','RF','hybrid_3way',0.409,-0.039,0.455,103,3583,36.1],['CCR','stack','RF+GBR+LGBM','hybrid_3way',0.363,0.226,0.507,105,7739,119.9],['SCE','single','XGB','none',0.688,-2.298,0.566,100,3583,31.7],['DCE','single','XGB','hybrid_3way',0.744,-3.825,0.360,104,3583,33.8],['SSB','single','XGB','none',0.879,-12.932,0.551,104,3583,32.8],['DSB','stack','XGB+GBR+LGBM','none',0.822,-5.647,0.425,104,3583,41.8],['FI','stack','GBR+XGB+LGBM','hybrid_3way',0.995,-11028.767,-47.845,89,958,9.3],['GFI','stack','HGBR+GBR+LGBM','none',0.464,-41.934,0.484,84,1972,11.5],['PTAT','stack','XGB+LGBM+HGBR','none',0.505,0.443,0.727,106,6781,61.8],['UDC','single','GBR','none',0.600,-0.110,0.570,112,6781,84.0],['FLC','single','XGB','none',0.311,0.497,0.653,112,6781,76.4],['STA','stack','RF+XGB+GBR','none',0.425,0.211,0.566,109,4809,83.4],['STR','stack','RF+GBR+XGB','none',0.500,-0.045,0.560,103,4809,89.1],['DFM','stack','RF+GBR+HGBR','none',0.501,-0.214,0.479,101,1611,28.4],['BOD','single','RF','none',0.632,-0.346,0.609,104,1611,23.0],['RUA','stack','XGB+RF+GBR','none',0.407,-0.436,0.215,101,1611,25.9],['RW','stack','RF+GBR+LGBM','none',0.409,0.427,0.664,100,4809,85.9],['RLS','single','RF','none',0.393,-0.068,0.433,104,1611,26.2],['RLR','single','XGB','none',0.563,0.090,0.602,104,1611,26.8],['FTA','stack','RF+LGBM+XGB','none',0.596,-0.163,0.632,104,1611,27.2],['FLS','single','HGBR','none',0.543,0.118,0.594,104,1611,25.6],['FUA','single','GBR','none',0.633,-0.393,0.533,104,1611,31.3],['RUH','stack','GBR+XGB+RF','none',0.662,-0.650,0.587,104,1611,33.2],['RUW','single','XGB','none',0.648,-0.524,0.557,101,1611,26.4],['UCL','stack','RF+GBR+LGBM','none',0.372,0.260,0.546,103,4809,92.5],['UDP','stack','RF+XGB+LGBM','none',0.371,0.159,0.474,103,4809,76.6],['FTP','single','RF','none',0.488,-0.273,0.395,101,1611,31.1],['RTP','single','RF','none',0.466,-0.117,0.446,101,1611,25.1],['NM$','stack','GBR+LGBM+HGBR','none',0.866,-0.754,0.885,109,3583,50.5],['CM$','single','GBR','none',0.863,-0.758,0.882,104,3583,45.2]
 ];
 
 // V10 models data: [trait, type, winner/bases, r2cv, nfeat]
@@ -753,11 +785,12 @@ function colorPct(v, good, bad) {
 
 // V11 table
 const v11t = document.getElementById('v11-tbody');
-V11.forEach(([t,tp,win,hyb,r2,par2,nf]) => {
+V11.forEach(([t,tp,win,hyb,r2,par2,r2abs,nf,nTr,tSec]) => {
     const cat = CATS[t]||'-';
     const hybBadge = hyb !== 'none' ? '<span class="badge badge-orange">Hybrid</span>' : '';
     const tpBadge = tp === 'stack' ? '<span class="badge badge-blue">STACK</span>' : '<span class="badge badge-green">SINGLE</span>';
-    v11t.innerHTML += `<tr><td><strong>${t}</strong></td><td>${tpBadge}</td><td>${win}</td><td>${hybBadge}</td><td>${r2.toFixed(3)}</td><td>${par2.toFixed(3)}</td><td>${nf}</td><td>${catBadge(cat)}</td></tr>`;
+    const r2absCol = r2abs > 0.7 ? `<span style="color:#51cf66;font-weight:600">${r2abs.toFixed(3)}</span>` : r2abs > 0.4 ? `<span style="color:#ffa94d">${r2abs.toFixed(3)}</span>` : `<span style="color:#ff6b6b">${r2abs.toFixed(3)}</span>`;
+    v11t.innerHTML += `<tr><td><strong>${t}</strong></td><td>${tpBadge}</td><td>${win}</td><td>${hybBadge}</td><td>${r2.toFixed(3)}</td><td>${r2absCol}</td><td>${par2.toFixed(3)}</td><td>${nf}</td><td>${nTr.toLocaleString()}</td><td>${tSec.toFixed(1)}s</td><td>${catBadge(cat)}</td></tr>`;
 });
 
 // V10 table

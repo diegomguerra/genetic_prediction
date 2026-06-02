@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSII Genetic Predictor — Select Sires</title>
+<style>
+  :root {
+    --bg: #111111; --surface: #1a1a1a; --card: #222222; --border: #333333;
+    --text: #f0f0f0; --muted: #999999; --red: #c41230; --red-dark: #9e0e27;
+    --red-light: #e8153a; --white: #ffffff; --gray-light: #cccccc;
+    --elite: #c41230; --top10: #e8153a; --sup20: #888888; --above: #aaaaaa;
+    --media: #666666; --below: #444444;
+    --green: #2ecc71; --orange: #e67e22;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* NAV */
+  .navbar { background:var(--red); padding:0 2rem; display:flex; align-items:center; height:56px; gap:1.5rem; }
+  .navbar .logo { display:flex; align-items:center; gap:.7rem; font-weight:700; font-size:1.1rem; color:var(--white); letter-spacing:.3px; }
+  .navbar .logo-icon { width:32px; height:32px; background:var(--white); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; color:var(--red); font-size:14px; }
+  .navbar .version { background:rgba(255,255,255,.2); color:#fff; font-size:.65rem; padding:3px 10px; border-radius:10px; font-weight:600; }
+  .navbar .nav-right { margin-left:auto; display:flex; align-items:center; gap:1rem; }
+  .navbar .status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; }
+  .navbar .status-text { font-size:.8rem; color:rgba(255,255,255,.8); }
+
+  .container { max-width:1400px; margin:0 auto; padding:2rem; }
+
+  /* UPLOAD SECTION */
+  .upload-section { display:flex; gap:2rem; margin-bottom:2rem; }
+  .upload-box { flex:1; background:var(--card); border:2px dashed var(--border); border-radius:12px; padding:3rem 2rem; text-align:center; cursor:pointer; transition:all .3s; }
+  .upload-box:hover { border-color:var(--red); background:rgba(196,18,48,.04); }
+  .upload-box.active { border-color:var(--green); border-style:solid; background:rgba(46,204,113,.04); }
+  .upload-icon { font-size:3rem; margin-bottom:1rem; }
+  .upload-box h3 { font-size:1.1rem; margin-bottom:.5rem; color:var(--white); }
+  .upload-box p { color:var(--muted); font-size:.85rem; }
+  .upload-box .file-name { color:var(--green); font-weight:600; margin-top:.5rem; }
+
+  .config-panel { width:280px; background:var(--card); border-radius:12px; padding:1.5rem; border:1px solid var(--border); }
+  .config-panel h3 { font-size:.95rem; margin-bottom:1rem; color:var(--white); }
+  .config-group { margin-bottom:1rem; }
+  .config-group label { display:block; font-size:.8rem; color:var(--muted); margin-bottom:.4rem; }
+  .config-group input { width:100%; padding:.5rem .7rem; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:.85rem; }
+  .config-group input:focus { outline:none; border-color:var(--red); }
+
+  .btn { padding:.7rem 1.5rem; border-radius:8px; border:none; font-weight:600; font-size:.9rem; cursor:pointer; transition:all .2s; display:inline-flex; align-items:center; gap:.5rem; }
+  .btn-primary { background:var(--red); color:#fff; }
+  .btn-primary:hover { background:var(--red-light); transform:translateY(-1px); box-shadow:0 4px 15px rgba(196,18,48,.3); }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+  .btn-outline:hover { border-color:var(--red); color:var(--red); }
+  .btn-dl { background:var(--red); color:#fff; }
+
+  /* PROGRESS */
+  .progress-section { display:none; margin-bottom:2rem; }
+  .progress-section.show { display:block; }
+  .progress-bar-outer { background:var(--surface); border-radius:10px; height:8px; overflow:hidden; margin-bottom:.5rem; }
+  .progress-bar-inner { height:100%; background:linear-gradient(90deg,var(--red),var(--red-light)); border-radius:10px; transition:width .5s ease; }
+  .progress-text { font-size:.8rem; color:var(--muted); }
+
+  /* RESULTS */
+  .results-section { display:none; }
+  .results-section.show { display:block; }
+
+  /* KPI CARDS */
+  .kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:1rem; margin-bottom:2rem; }
+  .kpi { background:var(--card); border-radius:10px; padding:1.2rem; border:1px solid var(--border); }
+  .kpi .label { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .kpi .value { font-size:1.8rem; font-weight:700; margin:.3rem 0; color:var(--white); }
+  .kpi .sub { font-size:.7rem; color:var(--muted); }
+  .kpi.highlight { border-color:var(--red); }
+
+  /* TABS */
+  .tabs { display:flex; gap:0; margin-bottom:1.5rem; border-bottom:2px solid var(--border); }
+  .tab { padding:.6rem 1.2rem; font-size:.85rem; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; background:none; border-top:none; border-left:none; border-right:none; margin-bottom:-2px; }
+  .tab.active { color:var(--red); border-bottom-color:var(--red); font-weight:600; }
+  .tab:hover { color:var(--white); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* TABLE */
+  .table-wrap { background:var(--card); border-radius:10px; border:1px solid var(--border); overflow:hidden; }
+  .table-wrap table { width:100%; border-collapse:collapse; font-size:.82rem; }
+  .table-wrap th { background:var(--surface); padding:.7rem .8rem; text-align:left; font-weight:600; color:var(--muted); text-transform:uppercase; font-size:.7rem; letter-spacing:.5px; position:sticky; top:0; }
+  .table-wrap td { padding:.6rem .8rem; border-top:1px solid var(--border); color:var(--gray-light); }
+  .table-wrap tr:hover td { background:rgba(196,18,48,.03); }
+  .table-scroll { max-height:500px; overflow-y:auto; }
+
+  /* GROUP PILLS */
+  .pill { display:inline-block; padding:2px 10px; border-radius:4px; font-size:.72rem; font-weight:600; }
+  .pill-elite { background:rgba(196,18,48,.15); color:var(--red-light); }
+  .pill-top10 { background:rgba(196,18,48,.10); color:#e8556a; }
+  .pill-sup20 { background:rgba(255,255,255,.08); color:var(--gray-light); }
+  .pill-above { background:rgba(255,255,255,.06); color:var(--muted); }
+  .pill-media { background:rgba(255,255,255,.04); color:#777; }
+  .pill-below { background:rgba(255,255,255,.03); color:#555; }
+
+  /* GROUP DISTRIBUTION */
+  .group-dist { display:grid; grid-template-columns:repeat(6,1fr); gap:.8rem; margin-bottom:1.5rem; }
+  .group-card { background:var(--card); border-radius:10px; padding:.8rem; text-align:center; border:1px solid var(--border); }
+  .group-card .g-icon { font-size:1.3rem; margin-bottom:.3rem; }
+  .group-card .g-name { font-size:.72rem; font-weight:600; }
+  .group-card .g-count { font-size:1.4rem; font-weight:700; }
+  .group-card .g-pct { font-size:.65rem; color:var(--muted); }
+
+  /* RECALL INFO */
+  .recall-box { background:var(--surface); border-radius:8px; padding:1rem 1.2rem; border-left:3px solid var(--red); margin-bottom:1rem; }
+  .recall-box .r-title { font-size:.8rem; font-weight:600; color:var(--red-light); margin-bottom:.3rem; }
+  .recall-box .r-text { font-size:.8rem; color:var(--muted); line-height:1.5; }
+
+  /* CHART */
+  .chart-area { background:var(--card); border-radius:10px; border:1px solid var(--border); padding:1.5rem; margin-bottom:1.5rem; }
+  .chart-title { font-size:.9rem; font-weight:600; margin-bottom:1rem; color:var(--white); }
+  .bar-chart { display:flex; align-items:flex-end; gap:6px; height:180px; padding-top:1rem; }
+  .bar-col { display:flex; flex-direction:column; align-items:center; flex:1; }
+  .bar { width:100%; border-radius:3px 3px 0 0; transition:height .5s ease; min-height:2px; }
+  .bar-label { font-size:.65rem; color:var(--muted); margin-top:4px; writing-mode:vertical-lr; transform:rotate(180deg); max-height:60px; overflow:hidden; }
+  .bar-value { font-size:.65rem; color:var(--white); margin-bottom:2px; font-weight:600; }
+
+  /* FOOTER */
+  .footer { text-align:center; padding:2rem; color:var(--muted); font-size:.72rem; border-top:1px solid var(--border); margin-top:3rem; }
+
+  @media(max-width:900px) {
+    .upload-section { flex-direction:column; }
+    .config-panel { width:100%; }
+    .kpi-row { grid-template-columns:repeat(3,1fr); }
+    .group-dist { grid-template-columns:repeat(3,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="logo">
+    <div class="logo-icon">SS</div>
+    DSII Genetic Predictor
+  </div>
+  <span class="version">V11</span>
+  <div class="nav-right">
+    <span class="status-dot"></span>
+    <span class="status-text">Pronto</span>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- UPLOAD -->
+  <div class="upload-section" id="uploadSection">
+    <div class="upload-box" id="uploadBox" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleFile(this)">
+      <div class="upload-icon" id="uploadIcon">📂</div>
+      <h3 id="uploadTitle">Upload da Planilha de Animais</h3>
+      <p id="uploadHint">Arraste ou clique para selecionar o arquivo .xlsx</p>
+      <p style="font-size:.75rem;color:var(--muted);margin-top:.5rem;">Colunas: ANIMAL, SIRE (NAAB), MGS, MMGS</p>
+      <div class="file-name" id="fileName" style="display:none;"></div>
+    </div>
+    <div class="config-panel">
+      <h3>Configurações</h3>
+      <div class="config-group">
+        <label>Nome do rebanho / cliente</label>
+        <input type="text" placeholder="Ex: Fazenda São José">
+      </div>
+      <div style="margin-top:1.5rem;">
+        <button class="btn btn-primary" id="runBtn" disabled onclick="runPrediction()" style="width:100%;">
+          ▶ Executar Predição
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-section" id="progressSection">
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="progressBar" style="width:0%"></div>
+    </div>
+    <div class="progress-text" id="progressText">Carregando modelos...</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results-section" id="resultsSection">
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi highlight">
+        <div class="label">Animais</div>
+        <div class="value" style="color:var(--red-light);">158</div>
+        <div class="sub">158 válidos / 0 excluídos</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Traits</div>
+        <div class="value">47</div>
+        <div class="sub">produção + tipo</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Touros Encontrados</div>
+        <div class="value" style="color:var(--green);">98%</div>
+        <div class="sub">155 de 158</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Elite 5% (TPI)</div>
+        <div class="value" style="color:var(--red);">8</div>
+        <div class="sub">animais no topo</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Tempo</div>
+        <div class="value">38s</div>
+        <div class="sub">47 traits × 158 animais</div>
+      </div>
+    </div>
+
+    <!-- GROUP DISTRIBUTION -->
+    <h3 style="font-size:.9rem;margin-bottom:1rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Distribuição — TPI</h3>
+    <div class="group-dist">
+      <div class="group-card" style="border-color:var(--red);">
+        <div class="g-name" style="color:var(--red-light);">Elite 5%</div>
+        <div class="g-count" style="color:var(--red-light);">8</div>
+        <div class="g-pct">5.1%</div>
+      </div>
+      <div class="group-card" style="border-color:var(--red-dark);">
+        <div class="g-name" style="color:#e8556a;">Top 10%</div>
+        <div class="g-count" style="color:#e8556a;">8</div>
+        <div class="g-pct">5.1%</div>
+      </div>
+      <div class="group-card">
+        <div class="g-name" style="color:var(--gray-light);">Superior 20%</div>
+        <div class="g-count" style="color:var(--gray-light);">16</div>
+        <div class="g-pct">10.1%</div>
+      </div>
+      <div class="group-card">
+        <div class="g-name" style="color:var(--muted);">Acima Média</div>
+        <div class="g-count" style="color:var(--muted);">32</div>
+        <div class="g-pct">20.3%</div>
+      </div>
+      <div class="group-card">
+        <div class="g-name" style="color:#777;">Média</div>
+        <div class="g-count" style="color:#777;">62</div>
+        <div class="g-pct">39.2%</div>
+      </div>
+      <div class="group-card">
+        <div class="g-name" style="color:#555;">Abaixo Média</div>
+        <div class="g-count" style="color:#555;">32</div>
+        <div class="g-pct">20.3%</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('predictions')">Predições por Trait</button>
+      <button class="tab" onclick="showTab('groups')">Classificação de Grupos</button>
+      <button class="tab" onclick="showTab('chart')">Visualização</button>
+      <button class="tab" onclick="showTab('confidence')">Confiança</button>
+    </div>
+
+    <!-- TAB: Predictions -->
+    <div class="tab-content active" id="tab-predictions">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <span style="font-size:.8rem;color:var(--muted);">10 de 158 animais — 47 traits</span>
+        <button class="btn btn-dl" onclick="alert('Download: predicoes_rebanho.xlsx')">⬇ Baixar Excel</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Animal</th><th>Sire</th><th>TPI</th><th>NM$</th><th>MILK</th><th>FAT</th><th>PRO</th>
+                <th>PL</th><th>DPR</th><th>SCS</th><th>UDC</th><th>FLC</th><th>PTAT</th><th>Grupo TPI</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>BR-4521</strong></td><td>7HO16045</td><td style="color:var(--red-light);font-weight:700;">2987</td><td>1045</td><td>1523</td><td>82</td><td>58</td><td>6.2</td><td>1.8</td><td>2.68</td><td>2.41</td><td>1.85</td><td>2.12</td><td><span class="pill pill-elite">Elite 5%</span></td></tr>
+              <tr><td><strong>BR-4522</strong></td><td>7HO15890</td><td style="color:var(--red-light);font-weight:700;">2945</td><td>1012</td><td>1489</td><td>78</td><td>55</td><td>5.8</td><td>2.1</td><td>2.71</td><td>2.35</td><td>1.78</td><td>1.95</td><td><span class="pill pill-elite">Elite 5%</span></td></tr>
+              <tr><td><strong>BR-4530</strong></td><td>7HO16102</td><td style="color:#e8556a;font-weight:600;">2876</td><td>989</td><td>1402</td><td>75</td><td>52</td><td>5.5</td><td>1.5</td><td>2.74</td><td>2.28</td><td>1.92</td><td>2.05</td><td><span class="pill pill-top10">Top 10%</span></td></tr>
+              <tr><td><strong>BR-4535</strong></td><td>7HO15923</td><td style="color:#e8556a;font-weight:600;">2851</td><td>975</td><td>1378</td><td>71</td><td>50</td><td>5.9</td><td>1.9</td><td>2.69</td><td>2.19</td><td>1.71</td><td>1.88</td><td><span class="pill pill-top10">Top 10%</span></td></tr>
+              <tr><td><strong>BR-4541</strong></td><td>7HO16055</td><td>2798</td><td>952</td><td>1345</td><td>68</td><td>48</td><td>5.1</td><td>1.3</td><td>2.76</td><td>2.12</td><td>1.65</td><td>1.82</td><td><span class="pill pill-sup20">Superior 20%</span></td></tr>
+              <tr><td><strong>BR-4548</strong></td><td>7HO15877</td><td>2756</td><td>938</td><td>1312</td><td>65</td><td>46</td><td>4.8</td><td>1.6</td><td>2.78</td><td>2.05</td><td>1.58</td><td>1.75</td><td><span class="pill pill-sup20">Superior 20%</span></td></tr>
+              <tr><td><strong>BR-4553</strong></td><td>7HO16088</td><td>2701</td><td>921</td><td>1278</td><td>62</td><td>44</td><td>5.3</td><td>1.1</td><td>2.81</td><td>1.98</td><td>1.52</td><td>1.68</td><td><span class="pill pill-above">Acima Média</span></td></tr>
+              <tr><td><strong>BR-4559</strong></td><td>7HO15945</td><td>2645</td><td>905</td><td>1245</td><td>59</td><td>42</td><td>4.5</td><td>0.8</td><td>2.83</td><td>1.91</td><td>1.45</td><td>1.62</td><td><span class="pill pill-media">Média</span></td></tr>
+              <tr><td><strong>BR-4562</strong></td><td>7HO16012</td><td>2589</td><td>888</td><td>1198</td><td>55</td><td>39</td><td>4.2</td><td>0.5</td><td>2.86</td><td>1.84</td><td>1.38</td><td>1.55</td><td><span class="pill pill-media">Média</span></td></tr>
+              <tr><td><strong>BR-4570</strong></td><td>7HO15860</td><td style="color:#555;">2412</td><td>825</td><td>1065</td><td>45</td><td>33</td><td>3.5</td><td>-0.2</td><td>2.95</td><td>1.62</td><td>1.15</td><td>1.28</td><td><span class="pill pill-below">Abaixo Média</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Groups -->
+    <div class="tab-content" id="tab-groups">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <span style="font-size:.8rem;color:var(--muted);">Classificação por trait</span>
+        <select style="padding:.4rem .7rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.82rem;">
+          <option>TPI</option><option>NM$</option><option>CM$</option><option>MILK</option><option>FAT</option>
+          <option>PRO</option><option>PL</option><option>DPR</option><option>SCS</option><option>UDC</option>
+          <option>FLC</option><option>PTAT</option><option>MAST</option><option>LIV</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Animal</th><th>PA</th><th>Predição DSII</th><th>Desvio</th><th>Percentil</th><th>Grupo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>BR-4521</strong></td><td>2850</td><td>2987</td><td style="color:var(--green);">+137</td><td>98.7%</td><td><span class="pill pill-elite">Elite 5%</span></td></tr>
+              <tr><td><strong>BR-4522</strong></td><td>2810</td><td>2945</td><td style="color:var(--green);">+135</td><td>97.5%</td><td><span class="pill pill-elite">Elite 5%</span></td></tr>
+              <tr><td><strong>BR-4530</strong></td><td>2780</td><td>2876</td><td style="color:var(--green);">+96</td><td>93.0%</td><td><span class="pill pill-top10">Top 10%</span></td></tr>
+              <tr><td><strong>BR-4535</strong></td><td>2760</td><td>2851</td><td style="color:var(--green);">+91</td><td>91.1%</td><td><span class="pill pill-top10">Top 10%</span></td></tr>
+              <tr><td><strong>BR-4541</strong></td><td>2720</td><td>2798</td><td style="color:var(--green);">+78</td><td>84.2%</td><td><span class="pill pill-sup20">Superior 20%</span></td></tr>
+              <tr><td><strong>BR-4548</strong></td><td>2700</td><td>2756</td><td style="color:var(--green);">+56</td><td>81.6%</td><td><span class="pill pill-sup20">Superior 20%</span></td></tr>
+              <tr><td><strong>BR-4553</strong></td><td>2680</td><td>2701</td><td style="color:var(--green);">+21</td><td>72.8%</td><td><span class="pill pill-above">Acima Média</span></td></tr>
+              <tr><td><strong>BR-4559</strong></td><td>2650</td><td>2645</td><td style="color:var(--red);">-5</td><td>55.1%</td><td><span class="pill pill-media">Média</span></td></tr>
+              <tr><td><strong>BR-4562</strong></td><td>2620</td><td>2589</td><td style="color:var(--red);">-31</td><td>44.3%</td><td><span class="pill pill-media">Média</span></td></tr>
+              <tr><td><strong>BR-4570</strong></td><td>2510</td><td>2412</td><td style="color:var(--red);">-98</td><td>12.7%</td><td><span class="pill pill-below">Abaixo Média</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Chart -->
+    <div class="tab-content" id="tab-chart">
+      <div class="chart-area">
+        <div class="chart-title">Distribuição de TPI Predito</div>
+        <div class="bar-chart" id="tpiChart"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div class="chart-area">
+          <div class="chart-title">Correlação PA × DSII (TPI)</div>
+          <div style="text-align:center;padding:2rem;color:var(--muted);">
+            <div style="font-size:3rem;font-weight:700;color:var(--red-light);">r = 0.93</div>
+            <div style="font-size:.85rem;margin-top:.5rem;">Spearman rank correlation</div>
+          </div>
+        </div>
+        <div class="chart-area">
+          <div class="chart-title">Accuracy por Granularidade (TPI)</div>
+          <div style="display:flex;justify-content:space-around;padding:1.5rem 0;">
+            <div style="text-align:center;">
+              <div style="font-size:2rem;font-weight:700;color:var(--green);">82%</div>
+              <div style="font-size:.75rem;color:var(--muted);">Quartil</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:2rem;font-weight:700;color:var(--white);">73%</div>
+              <div style="font-size:.75rem;color:var(--muted);">Quintil</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:2rem;font-weight:700;color:var(--orange);">58%</div>
+              <div style="font-size:.75rem;color:var(--muted);">Decil</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:2rem;font-weight:700;color:var(--red);">45%</div>
+              <div style="font-size:.75rem;color:var(--muted);">Vigintil</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Confidence -->
+    <div class="tab-content" id="tab-confidence">
+      <div class="recall-box" style="margin-bottom:1.5rem;">
+        <div class="r-title">Como interpretar a confiança</div>
+        <div class="r-text">
+          A confiança mede o <strong style="color:var(--white);">Recall validado</strong>: de cada 100 animais realmente top 5%, quantos o modelo identifica corretamente.
+          Validado em <strong style="color:var(--white);">4.156 animais com genômica real</strong>.
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Trait</th><th>Recall@5%</th><th>Recall@10%</th><th>Recall@15%</th><th>Recall@20%</th><th>Spearman</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>TPI</strong></td><td>42%</td><td style="color:var(--green);font-weight:600;">71%</td><td style="color:var(--green);font-weight:600;">82%</td><td>89%</td><td>0.93</td></tr>
+              <tr><td><strong>NM$</strong></td><td>45%</td><td style="color:var(--green);font-weight:600;">74%</td><td style="color:var(--green);font-weight:600;">85%</td><td>91%</td><td>0.94</td></tr>
+              <tr><td><strong>MILK</strong></td><td>33%</td><td style="color:var(--orange);">60%</td><td style="color:var(--green);font-weight:600;">75%</td><td>83%</td><td>0.81</td></tr>
+              <tr><td><strong>FAT</strong></td><td>40%</td><td style="color:var(--green);font-weight:600;">68%</td><td style="color:var(--green);font-weight:600;">80%</td><td>87%</td><td>0.92</td></tr>
+              <tr><td><strong>PRO</strong></td><td>38%</td><td style="color:var(--green);font-weight:600;">65%</td><td style="color:var(--green);font-weight:600;">78%</td><td>86%</td><td>0.91</td></tr>
+              <tr><td><strong>PL</strong></td><td>31%</td><td style="color:var(--orange);">58%</td><td style="color:var(--orange);">72%</td><td>81%</td><td>0.85</td></tr>
+              <tr><td><strong>DPR</strong></td><td>28%</td><td style="color:var(--orange);">54%</td><td style="color:var(--orange);">68%</td><td>78%</td><td>0.72</td></tr>
+              <tr><td><strong>SCS</strong></td><td>30%</td><td style="color:var(--orange);">56%</td><td style="color:var(--orange);">70%</td><td>80%</td><td>0.74</td></tr>
+              <tr><td><strong>UDC</strong></td><td>29%</td><td style="color:var(--orange);">55%</td><td style="color:var(--orange);">69%</td><td>79%</td><td>0.76</td></tr>
+              <tr><td><strong>FLC</strong></td><td>32%</td><td style="color:var(--orange);">59%</td><td style="color:var(--green);font-weight:600;">73%</td><td>82%</td><td>0.81</td></tr>
+              <tr><td><strong>PTAT</strong></td><td>35%</td><td style="color:var(--green);font-weight:600;">62%</td><td style="color:var(--green);font-weight:600;">76%</td><td>84%</td><td>0.85</td></tr>
+              <tr><td><strong>MAST</strong></td><td>26%</td><td style="color:var(--orange);">52%</td><td style="color:var(--orange);">66%</td><td>76%</td><td>0.73</td></tr>
+              <tr><td><strong>LIV</strong></td><td>27%</td><td style="color:var(--orange);">53%</td><td style="color:var(--orange);">67%</td><td>77%</td><td>0.76</td></tr>
+              <tr><td><strong>CCR</strong></td><td>27%</td><td style="color:var(--orange);">52%</td><td style="color:var(--orange);">66%</td><td>76%</td><td>0.71</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOWNLOAD BAR -->
+    <div style="display:flex;gap:1rem;margin-top:2rem;padding:1.5rem;background:var(--card);border-radius:10px;border:1px solid var(--border);align-items:center;">
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:.9rem;color:var(--white);">Exportar Resultados</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-top:.3rem;">Excel com 3 abas: Predições, Grupos, Confiança</div>
+      </div>
+      <button class="btn btn-dl" onclick="alert('Download: Rebanho_DSII.xlsx')">⬇ Excel</button>
+      <button class="btn btn-outline" onclick="alert('Download: Rebanho_resumo.pdf')">PDF</button>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /container -->
+
+<div class="footer">
+  Select Sires do Brasil &nbsp;|&nbsp; DSII Genetic Predictor v11 &nbsp;|&nbsp; Modelo treinado Mai/2026
+</div>
+
+<script>
+function handleFile(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const box = document.getElementById('uploadBox');
+  const fn = document.getElementById('fileName');
+  box.classList.add('active');
+  fn.style.display = 'block';
+  fn.textContent = file.name;
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('uploadTitle').textContent = 'Arquivo carregado';
+  document.getElementById('uploadIcon').textContent = '✓';
+  document.getElementById('uploadHint').style.display = 'none';
+}
+
+function runPrediction() {
+  const prog = document.getElementById('progressSection');
+  const bar = document.getElementById('progressBar');
+  const text = document.getElementById('progressText');
+  prog.classList.add('show');
+  document.getElementById('runBtn').disabled = true;
+
+  const steps = [
+    {pct:5,  msg:'Carregando modelos (47 traits)...'},
+    {pct:15, msg:'Lendo planilha... 158 animais'},
+    {pct:25, msg:'Buscando touros no banco...'},
+    {pct:35, msg:'Construindo features...'},
+    {pct:50, msg:'Predizendo traits de produção...'},
+    {pct:65, msg:'Predizendo traits de tipo...'},
+    {pct:78, msg:'Predizendo índices (TPI, NM$, CM$)...'},
+    {pct:88, msg:'Aplicando correções...'},
+    {pct:95, msg:'Classificando grupos...'},
+    {pct:100,msg:'Concluído — 158 animais × 47 traits em 38s'},
+  ];
+
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i < steps.length) {
+      bar.style.width = steps[i].pct + '%';
+      text.textContent = steps[i].msg;
+      i++;
+    } else {
+      clearInterval(interval);
+      setTimeout(() => {
+        prog.classList.remove('show');
+        document.getElementById('resultsSection').classList.add('show');
+        buildChart();
+      }, 800);
+    }
+  }, 500);
+}
+
+function buildChart() {
+  const chart = document.getElementById('tpiChart');
+  const data = [
+    {label:'2200-2300',val:5,color:'#444'},
+    {label:'2300-2400',val:12,color:'#555'},
+    {label:'2400-2500',val:18,color:'#666'},
+    {label:'2500-2600',val:28,color:'#777'},
+    {label:'2600-2700',val:35,color:'#888'},
+    {label:'2700-2800',val:25,color:'#999'},
+    {label:'2800-2900',val:18,color:'#e8556a'},
+    {label:'2900-3000',val:12,color:'#c41230'},
+    {label:'3000+',val:5,color:'#9e0e27'},
+  ];
+  const max = Math.max(...data.map(d=>d.val));
+  chart.innerHTML = data.map(d => `
+    <div class="bar-col">
+      <div class="bar-value">${d.val}</div>
+      <div class="bar" style="height:${(d.val/max)*150}px;background:${d.color};"></div>
+      <div class="bar-label">${d.label}</div>
+    </div>
+  `).join('');
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
