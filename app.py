@@ -9,7 +9,6 @@ import pandas as pd
 import numpy as np
 import pickle, csv, re, time, io, json, urllib.request, urllib.error, urllib.parse
 from pathlib import Path
-from scipy.stats import rankdata
 
 # ============================================================
 # CONFIG

@@ -433,8 +433,11 @@ def classify_groups(predictions, trait, n_animals):
     values = np.array([v[1] for v in valid])
     n = len(values)
 
-    # Percentile rank (100 = melhor)
-    ranks = rankdata(values) / n * 100
+    # Percentile rank (100 = melhor) using ordinal method to avoid ties
+    # With 'average', tied values share the same rank and can all land in
+    # the same bucket (e.g. 10 ties → all Elite 5%, 0 in Top 10%).
+    # 'ordinal' assigns unique ranks so each bucket gets ~correct proportion.
+    ranks = rankdata(values, method='ordinal') / n * 100
 
     # Recall lookup
     recall_data = VALIDATED_RECALL.get(trait, {})
