@@ -362,7 +362,7 @@ def run_prediction(df, header_row, saved_models, sire_profiles, mgs_profiles, pr
     group_data = {}
     for trait in GROUP_TRAITS:
         if trait not in ALL_TRAITS: continue
-        preds_list = [(i, results[i].get(trait)) for i in range(len(results))]
+        preds_list = [results[i].get(trait) for i in range(len(results))]
         groups = classify_groups(preds_list, trait, n_animals)
         group_data[trait] = groups
 
@@ -505,8 +505,8 @@ def inject_css():
     }
 
     /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 0; border-bottom: 1px solid #2a2d38; }
-    .stTabs [data-baseweb="tab"] { color: #6b7280; font-weight: 600; font-size: .82rem; }
+    .stTabs [data-baseweb="tab-list"] { gap: 12px; border-bottom: 1px solid #2a2d38; }
+    .stTabs [data-baseweb="tab"] { color: #6b7280; font-weight: 600; font-size: .82rem; padding: 0.5rem 1rem; }
     .stTabs [aria-selected="true"] { color: #c41230 !important; border-bottom-color: #c41230 !important; }
 
     /* Footer */
