@@ -24,3 +24,9 @@ Thumbs.db
 # Bull caches (generated locally)
 _bulls_cache.pkl
 _cdcb_cache.pkl
+
+# Model cache (downloaded from Supabase Storage)
+_model_cache/
+
+# V11 results (models too large for GitHub)
+dsii_v11_results/
