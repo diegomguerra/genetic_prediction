@@ -54,7 +54,7 @@ VALIDATED_RECALL = {
 # Traits to classify in groups (production-relevant)
 GROUP_TRAITS = ['TPI', 'NM$', 'MILK', 'FAT', 'FAT%', 'PRO', 'PRO%',
                 'PL', 'LIV', 'SCS', 'MAST', 'DPR', 'HCR', 'CCR',
-                'PTAT', 'UDC', 'FLC']
+                'PTAT', 'UDC', 'FLC', 'GL', 'EFC', 'H_LIV', 'RFI']
 
 # Category ordering for output
 CATEGORIES = {

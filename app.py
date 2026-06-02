@@ -177,7 +177,7 @@ def fetch_bulls_for_naabs(raw_naabs):
 # CACHED MODEL LOADING — from Supabase Storage or local cache
 # ============================================================
 STORAGE_URL = "https://odactdxpecpiyiyaqfgi.supabase.co/storage/v1/object/public/dsii-models"
-MODEL_CACHE_DIR = BASE / '_model_cache'
+MODEL_CACHE_DIR = BASE / '_model_cache_v2'
 
 def _download_file(url, dest):
     """Baixa arquivo da URL para dest."""
